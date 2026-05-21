@@ -633,10 +633,18 @@ function setStatus(id, type, msg) {
 // Supabase helpers (새 프로젝트)
 // ════════════════════════════════════════
 function sbH() { return { 'Content-Type':'application/json', 'apikey':ANON_KEY, 'Authorization':'Bearer '+ANON_KEY }; }
+function hasKey() {
+  if (!ANON_KEY || ANON_KEY.length < 20) {
+    showToast('⚠️ Supabase Key를 먼저 입력·저장해주세요.', 3500);
+    return false;
+  }
+  return true;
+}
 async function sbGet(t, p) {
   var qs = Object.entries(p).map(function(e){ return e[0]+'='+encodeURIComponent(e[1]); }).join('&');
   var r = await fetch(SUPA_URL+'/rest/v1/'+t+'?'+qs, { headers: sbH() });
-  return r.json();
+  var data = await r.json();
+  return Array.isArray(data) ? data : [];
 }
 async function sbUpsert(t, d) {
   var r = await fetch(SUPA_URL+'/rest/v1/'+t, { method:'POST', headers: Object.assign({}, sbH(), {'Prefer':'resolution=merge-duplicates'}), body: JSON.stringify(d) });
@@ -763,6 +771,7 @@ async function confirmDeletePatient() {
 async function searchPatient() {
   var chartNo = document.getElementById('pChartNo').value.trim();
   if (!chartNo) return;
+  if (!hasKey()) return;
   setStatus('searchStatus','loading','조회 중...');
   document.getElementById('patientCard').classList.add('hidden');
   document.getElementById('visitForm').classList.add('hidden');
@@ -773,7 +782,9 @@ async function searchPatient() {
       sbGet('drugs',    { chart_no:'eq.'+chartNo, select:'*', order:'id.asc' }),
       sbGet('daeri',    { chart:'eq.'+chartNo, select:'visitor_name,relation,patient_name,visitor_phone,created_at', order:'created_at.desc', limit:'10' })
     ]);
-    var patient = res[0][0]||null, visit = res[1][0]||null, drugList = res[2]||[], daeriList = res[3]||[];
+    var patient = res[0][0]||null, visit = res[1][0]||null;
+    var drugList = Array.isArray(res[2]) ? res[2] : [];
+    var daeriList = Array.isArray(res[3]) ? res[3] : [];
     _currentChart = chartNo;
     _patientDrugs = drugList.filter(function(d){ return d.drug_code||d.drug_name; });
     _drugsChanged = false;
@@ -1136,6 +1147,7 @@ function getApptDates() {
 }
 
 async function loadAppts() {
+  if (!hasKey()) return;
   var btn=document.getElementById('apptLoadBtn');
   if (btn){ btn.disabled=true; btn.textContent='로딩중...'; }
   _apptDates=getApptDates();
@@ -1303,10 +1315,11 @@ function loadSearchTab() {
   document.getElementById('search-type').value = 'all';
   document.getElementById('search-chart').value = '';
   document.getElementById('search-name').value = '';
-  doSearch();
+  if (hasKey()) doSearch();
 }
 
 async function doSearch() {
+  if (!hasKey()) return;
   var type  = document.getElementById('search-type').value;
   var chart = document.getElementById('search-chart').value.trim();
   var name  = document.getElementById('search-name').value.trim();
