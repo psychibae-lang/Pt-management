@@ -578,9 +578,8 @@ tr:hover td { background: #fafbff; }
 // ════════════════════════════════════════
 // 설정
 // ════════════════════════════════════════
-const SUPA_URL  = 'https://qouywglrlahhiilpjech.supabase.co';
-// 이전 프로젝트(접수조회용) — chojin/daeri 테이블은 아직 여기에 있을 수 있음
-const SUPA_OLD  = 'https://rurbfcocihvapbtdzbyt.supabase.co';
+const SUPA_URL  = 'https://rurbfcocihvapbtdzbyt.supabase.co';
+const SUPA_OLD  = SUPA_URL; // 동일 프로젝트 (rurbfcocihvapbtdzbyt)
 const SUPA_OLD_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1cmJmY29jaWh2YXBidGR6Ynl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NTUzMzQsImV4cCI6MjA5MjUzMTMzNH0.Y89bwZlS5ciqfhF9IRbF8oGa9CmFRsP6msFbp7DVypc';
 
 let ANON_KEY = localStorage.getItem('sb_anon_key') || '';
@@ -1325,9 +1324,6 @@ async function deleteAppt(id) {
 // ════════════════════════════════════════
 // ══ 접수조회 탭 ══
 // ════════════════════════════════════════
-// 새 프로젝트에 chojin/daeri 테이블이 있을 경우 SUPA_URL 사용.
-// 이전 프로젝트에도 있을 경우 SUPA_OLD + SUPA_OLD_ANON 사용.
-// 두 곳 모두 조회하여 병합.
 var currentModalData = null;
 
 function loadSearchTab() {
@@ -1347,7 +1343,7 @@ async function doSearch() {
   var tables = type === 'all' ? ['chojin','daeri'] : [type];
   var allRows = [];
 
-  // 새 Supabase (이관된 곳) 우선 조회
+  // rurbfcocihvapbtdzbyt 프로젝트 조회
   for (var tbl of tables) {
     var url = SUPA_URL+'/rest/v1/'+tbl+'?order=created_at.desc&limit=100';
     if (chart) url += '&chart=eq.'+encodeURIComponent(chart);
@@ -1361,23 +1357,6 @@ async function doSearch() {
     } catch(e) {}
   }
 
-  // 기존 Supabase도 조회 (이관 미완료 대비)
-  for (var tbl2 of tables) {
-    var url2 = SUPA_OLD+'/rest/v1/'+tbl2+'?order=created_at.desc&limit=100';
-    if (chart) url2 += '&chart=eq.'+encodeURIComponent(chart);
-    if (name)  url2 += '&'+(tbl2==='chojin'?'name':'visitor_name')+'=ilike.*'+encodeURIComponent(name)+'*';
-    try {
-      var r2 = await fetch(url2, { headers: srH(SUPA_OLD_ANON) });
-      if (r2.ok) {
-        var rows2 = await r2.json();
-        if (Array.isArray(rows2)) {
-          // 중복 제거 (같은 id+table이 이미 있으면 스킵)
-          var existIds = new Set(allRows.map(function(x){ return x._table+'-'+x.id; }));
-          rows2.forEach(function(row){ if (!existIds.has(tbl2+'-'+row.id)) allRows.push(Object.assign({},row,{_table:tbl2,_src:'old'})); });
-        }
-      }
-    } catch(e) {}
-  }
 
   allRows.sort(function(a,b){ return new Date(b.created_at) - new Date(a.created_at); });
   if (!allRows.length) { el.innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;">검색 결과가 없습니다.</div>'; return; }
@@ -1389,7 +1368,7 @@ async function doSearch() {
     var badge = isCj
       ? '<span style="background:#dbeafe;color:#1d4ed8;font-size:12px;padding:2px 8px;border-radius:10px;font-weight:700;">초진</span>'
       : '<span style="background:#d1fae5;color:#065f46;font-size:12px;padding:2px 8px;border-radius:10px;font-weight:700;">대리</span>';
-    var srcBadge = row._src==='old' ? '<span style="font-size:10px;color:#aaa;margin-left:4px;">(구)</span>' : '';
+    var srcBadge = '';
     return '<div onclick="openDetail(\''+row.id+'\',\''+row._table+'\',\''+row._src+'\')"'
       +' style="background:white;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;"'
       +' onmouseover="this.style.borderColor=\'#1a3a5c\'" onmouseout="this.style.borderColor=\'#e5e7eb\'">'
@@ -1404,9 +1383,7 @@ async function doSearch() {
 }
 
 async function openDetail(id, table, src) {
-  var baseUrl = (src==='old') ? SUPA_OLD : SUPA_URL;
-  var key     = (src==='old') ? SUPA_OLD_ANON : ANON_KEY;
-  var r = await fetch(baseUrl+'/rest/v1/'+table+'?id=eq.'+id, { headers: srH(key) });
+  var r = await fetch(SUPA_URL+'/rest/v1/'+table+'?id=eq.'+id, { headers: srH(ANON_KEY) });
   var rows = await r.json();
   if (!rows.length) return;
   var row = rows[0];
@@ -1528,10 +1505,8 @@ async function saveEdit() {
   if (!newName||!newChart){ alert('이름과 차트번호를 모두 입력해주세요.'); return; }
   if (!confirm('수정하시겠습니까?\n이름: '+newName+'\n차트번호: '+newChart)) return;
   var nameField=table==='chojin'?'name':'visitor_name';
-  var baseUrl=(src==='old')?SUPA_OLD:SUPA_URL;
-  var key=(src==='old')?SUPA_OLD_ANON:ANON_KEY;
   try {
-    var r=await fetch(baseUrl+'/rest/v1/'+table+'?id=eq.'+encodeURIComponent(row.id),{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key,'apikey':key,'Prefer':'return=representation'},body:JSON.stringify({[nameField]:newName,chart:newChart})});
+    var r=await fetch(SUPA_URL+'/rest/v1/'+table+'?id=eq.'+encodeURIComponent(row.id),{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+ANON_KEY,'apikey':ANON_KEY,'Prefer':'return=representation'},body:JSON.stringify({[nameField]:newName,chart:newChart})});
     if (r.ok) { showToast('✅ 수정 완료!'); closeEditModal(); closeModal(); doSearch(); }
     else { var err=await r.text(); alert('❌ 수정 실패 ('+r.status+'):\n'+err); }
   } catch(e){ alert('❌ 오류: '+e.message); }
@@ -1553,10 +1528,8 @@ async function confirmDelete() {
   var row=currentModalData.row, table=currentModalData.table, src=currentModalData.src;
   var name=table==='chojin'?(row.name||''):(row.visitor_name||'');
   if (!confirm('정말 삭제하시겠습니까?\n복구할 수 없습니다.\n\n대상: '+name+' / 차트 '+(row.chart||'-'))) return;
-  var baseUrl=(src==='old')?SUPA_OLD:SUPA_URL;
-  var key=(src==='old')?SUPA_OLD_ANON:ANON_KEY;
   try {
-    var r=await fetch(baseUrl+'/rest/v1/'+table+'?id=eq.'+encodeURIComponent(row.id),{method:'DELETE',headers:{'Authorization':'Bearer '+key,'apikey':key,'Prefer':'return=minimal'}});
+    var r=await fetch(SUPA_URL+'/rest/v1/'+table+'?id=eq.'+encodeURIComponent(row.id),{method:'DELETE',headers:{'Authorization':'Bearer '+ANON_KEY,'apikey':ANON_KEY,'Prefer':'return=minimal'}});
     if (r.ok) { showToast('🗑️ 삭제 완료!'); closeDeleteModal(); closeModal(); doSearch(); }
     else { var err=await r.text(); alert('❌ 삭제 실패 ('+r.status+'):\n'+err); }
   } catch(e){ alert('❌ 오류: '+e.message); }
