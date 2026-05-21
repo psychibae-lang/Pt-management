@@ -444,7 +444,11 @@ async function sbUpsert(t, d) {
     headers: Object.assign({}, sbH(), {'Prefer':'resolution=merge-duplicates'}),
     body: JSON.stringify(d)
   });
-  return r.status < 300;
+  if (r.status >= 300) {
+    var err = await r.text();
+    throw new Error('['+r.status+'] '+t+': '+err.slice(0,120));
+  }
+  return true;
 }
 
 // ════════════════════════════════════════

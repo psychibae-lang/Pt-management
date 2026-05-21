@@ -43,9 +43,6 @@ header {
   gap: 10px;
   flex-wrap: wrap;
   justify-content: center;
-  position: sticky;
-  top: 0;
-  z-index: 200;
 }
 .logo {
   font-family: 'JetBrains Mono', monospace;
@@ -114,7 +111,7 @@ header {
   display: flex;
   overflow-x: auto;
   position: sticky;
-  top: 53px;
+  top: 0;
   z-index: 150;
 }
 .main-tab {
@@ -141,7 +138,7 @@ header {
   display: flex;
   gap: 4px;
   position: sticky;
-  top: 101px;
+  top: 48px;
   z-index: 140;
 }
 .sub-tab {
@@ -652,18 +649,34 @@ async function sbGet(t, p) {
   var data = await r.json();
   return Array.isArray(data) ? data : [];
 }
-async function sbUpsert(t, d) {
-  var r = await fetch(SUPA_URL+'/rest/v1/'+t, { method:'POST', headers: Object.assign({}, sbH(), {'Prefer':'resolution=merge-duplicates'}), body: JSON.stringify(d) });
-  return r.status < 300;
-}
 async function sbInsert(t, d) {
   var r = await fetch(SUPA_URL+'/rest/v1/'+t, { method:'POST', headers: sbH(), body: JSON.stringify(d) });
-  return r.status < 300;
+  if (r.status >= 300) {
+    var err = await r.text();
+    throw new Error('['+r.status+'] '+t+': '+err.slice(0,120));
+  }
+  return true;
 }
 async function sbUpdate(t, m, d) {
   var qs = Object.entries(m).map(function(e){ return e[0]+'=eq.'+encodeURIComponent(e[1]); }).join('&');
   var r = await fetch(SUPA_URL+'/rest/v1/'+t+'?'+qs, { method:'PATCH', headers: sbH(), body: JSON.stringify(d) });
-  return r.status < 300;
+  if (r.status >= 300) {
+    var err = await r.text();
+    throw new Error('['+r.status+'] '+t+': '+err.slice(0,120));
+  }
+  return true;
+}
+async function sbUpsert(t, d) {
+  var r = await fetch(SUPA_URL+'/rest/v1/'+t, {
+    method: 'POST',
+    headers: Object.assign({}, sbH(), {'Prefer':'resolution=merge-duplicates'}),
+    body: JSON.stringify(d)
+  });
+  if (r.status >= 300) {
+    var err = await r.text();
+    throw new Error('['+r.status+'] '+t+': '+err.slice(0,120));
+  }
+  return true;
 }
 async function sbDelete(t, m) {
   var qs = Object.entries(m).map(function(e){ return e[0]+'=eq.'+encodeURIComponent(e[1]); }).join('&');
@@ -1468,17 +1481,30 @@ async function saveChartFromModal() {
   var origText=btn.textContent; btn.textContent='저장 중...'; btn.disabled=true;
   try {
     var today=today6();
-    var visitData={chart_no:chartNo,visit_date:today,updated_at:new Date().toISOString()};
-    var existing_pt=await sbGet('patients',{chart_no:'eq.'+chartNo,select:'chart_no',limit:'1'});
-    if (!existing_pt||existing_pt.length===0) await sbInsert('patients',{chart_no:chartNo,name:row.name||'',phone:(row.phone||'').replace(/[-\s]/g,''),updated_at:new Date().toISOString()});
-    var existing_v=await sbGet('visits',{chart_no:'eq.'+chartNo,select:'id',limit:'1'});
-    if (existing_v&&existing_v.length>0) await sbUpdate('visits',{chart_no:chartNo},visitData);
-    else await sbInsert('visits',visitData);
+    var visitData={chart_no:chartNo, visit_date:today, updated_at:new Date().toISOString()};
+    // patients 등록 여부 확인
+    var existing_pt = await sbGet('patients', {chart_no:'eq.'+chartNo, select:'chart_no', limit:'1'});
+    if (!existing_pt || existing_pt.length===0) {
+      await sbInsert('patients', {
+        chart_no: chartNo,
+        phone: (row.phone||'').replace(/[-\s]/g,''),
+        updated_at: new Date().toISOString()
+      });
+    }
+    // visits upsert
+    var existing_v = await sbGet('visits', {chart_no:'eq.'+chartNo, select:'id', limit:'1'});
+    if (existing_v && existing_v.length>0) {
+      await sbUpdate('visits', {chart_no:chartNo}, visitData);
+    } else {
+      await sbInsert('visits', visitData);
+    }
     btn.textContent='✅ 저장됨';
-    showToast('✅ 챠트 '+chartNo+' → 진료 탭에 내원일('+today+') 저장 완료');
-    setTimeout(function(){ btn.textContent=origText; btn.disabled=false; },2500);
+    showToast('✅ 챠트 '+chartNo+' → 내원일('+today+') 저장 완료');
+    setTimeout(function(){ btn.textContent=origText; btn.disabled=false; }, 2500);
   } catch(e) {
-    showToast('❌ 저장 실패: '+e.message); btn.textContent=origText; btn.disabled=false;
+    console.error('saveChartFromModal error:', e);
+    showToast('❌ 저장 실패: '+e.message, 5000);
+    btn.textContent=origText; btn.disabled=false;
   }
 }
 
