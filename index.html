@@ -221,6 +221,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
     <button class="nav-tab" id="navProxy" onclick="switchTab('proxy')">📋 대리처방</button>
     <button class="nav-tab" id="navSelcare" onclick="switchTab('selcare')">⭐ 선택의료</button>
     <button class="nav-tab" id="navPhone" onclick="switchTab('phone')">📞 전화번호변경</button>
+    <button class="nav-tab" id="navDrugview" onclick="switchTab('drugview')">💊 약물조회</button>
   </div>
   <div class="nav-tabs-row" id="grpEtc">
     <button class="nav-tab" id="navSms" onclick="switchTab('sms')">📱 문자발송</button>
@@ -869,7 +870,7 @@ async function claudeCall(body){var r=await fetch(PROXY,{method:'POST',headers:{
 async function sheetPost(body){body._sheet_action=true;var r=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+ANON_KEY},body:JSON.stringify(body)});return r.json();}
 
 // ── 탭 ───────────────────────────────────────────────
-var TABS=['links','patient','appt','drug','search','clin','proxy','selcare','sms','phone','stats'];
+var TABS=['links','patient','appt','drug','search','clin','proxy','selcare','sms','phone','stats','drugview'];
 // ── 약물 일괄 입력 ──────────────────────────────────
 function applyBulkFill(){
   var dose=document.getElementById('bulkDose')?document.getElementById('bulkDose').value.trim():'';
@@ -4178,6 +4179,54 @@ async function confirmDelete() {
 </script>
 
 <!-- ══ 링크 탭 ══ -->
+<!-- ══ 약물조회 탭 ══ -->
+<div id="tabDrugview" class="container hidden">
+  <div class="card">
+    <div class="card-title">💊 약물조회</div>
+    <div class="input-row" style="margin-bottom:0;">
+      <div class="input-group" style="max-width:200px;">
+        <label>차트번호</label>
+        <input type="text" id="dvChartNo" placeholder="예: 10587" onkeydown="if(event.key==='Enter')loadDrugView()">
+      </div>
+      <button class="btn btn-primary" onclick="loadDrugView()" style="margin-top:18px;">🔍 조회</button>
+    </div>
+    <div id="dvStatus" class="hidden" style="margin-top:10px;"></div>
+  </div>
+
+  <div id="dvResultCard" class="card hidden">
+    <!-- 헤더: 차트번호 + 저장날짜 + 이미지/PDF 버튼 -->
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:18px;font-weight:800;color:var(--text);">차트 <span id="dvChartLabel" style="color:var(--accent);"></span></span>
+        <span id="dvDateBadge" style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1.5px solid #c7d9fb;border-radius:20px;padding:4px 10px;font-size:11px;color:var(--accent);font-weight:600;">
+          📅 <span id="dvDateLabel">—</span>
+        </span>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="dvSaveImage()" class="btn btn-outline" style="font-size:12px;padding:7px 14px;border-color:#7c5cfc;color:#7c5cfc;">🖼️ 이미지 저장</button>
+        <button onclick="dvSavePDF()" class="btn btn-success" style="font-size:12px;padding:7px 16px;">📄 PDF 저장</button>
+      </div>
+    </div>
+
+    <!-- 읽기전용 테이블 -->
+    <div style="overflow-x:auto;">
+      <table id="dvTable" style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr>
+            <th style="background:#eef3fe;color:#4f6ea0;font-size:10px;font-weight:700;padding:8px 10px;text-align:left;border-bottom:2px solid #c7d9fb;">약물코드</th>
+            <th style="background:#eef3fe;color:#4f6ea0;font-size:10px;font-weight:700;padding:8px 10px;text-align:left;border-bottom:2px solid #c7d9fb;">약물명</th>
+            <th style="background:#eef3fe;color:#4f6ea0;font-size:10px;font-weight:700;padding:8px 10px;text-align:center;border-bottom:2px solid #c7d9fb;">용량</th>
+            <th style="background:#eef3fe;color:#4f6ea0;font-size:10px;font-weight:700;padding:8px 10px;text-align:center;border-bottom:2px solid #c7d9fb;">일투</th>
+            <th style="background:#eef3fe;color:#4f6ea0;font-size:10px;font-weight:700;padding:8px 10px;text-align:center;border-bottom:2px solid #c7d9fb;">일수</th>
+            <th style="background:#eef3fe;color:#4f6ea0;font-size:10px;font-weight:700;padding:8px 10px;text-align:center;border-bottom:2px solid #c7d9fb;">용법</th>
+          </tr>
+        </thead>
+        <tbody id="dvTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <div id="tabLinks" class="container">
 
   <!-- 저장된 링크 (상단) -->
@@ -4549,6 +4598,198 @@ async function drugSavePDF() {
     alert('PDF 저장 오류: ' + e.message);
   }
 }
+
+// ══ 약물조회 탭 ═══════════════════════════════════════
+var _dvDrugs = [];
+var _dvChart = null;
+var _dvDate  = null;
+
+async function loadDrugView() {
+  var chartNo = document.getElementById('dvChartNo').value.trim();
+  if (!chartNo) { alert('차트번호를 입력하세요.'); return; }
+  if (!SUPA_ANON || SUPA_ANON.length < 10) { alert('Supabase Key를 먼저 입력해주세요.'); return; }
+
+  setStatus('dvStatus', 'loading', '조회 중...');
+  document.getElementById('dvResultCard').classList.add('hidden');
+
+  try {
+    var rows = await sbGet('patient_drugs',
+      { select: 'drug_code,drug_name,dose,daily_freq,days,method,saved_date,created_at',
+        chart_no: 'eq.' + chartNo,
+        order: 'id.asc' });
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      setStatus('dvStatus', 'error', '약물 정보가 없습니다 (차트: ' + chartNo + ')');
+      return;
+    }
+
+    _dvChart  = chartNo;
+    _dvDrugs  = rows;
+
+    // 저장날짜: saved_date 우선, 없으면 created_at 첫 행
+    var raw = rows[0].saved_date || (rows[0].created_at ? rows[0].created_at.slice(0,10).replace(/-/g,'').slice(2) : null);
+    _dvDate   = raw ? fmt6(raw) : today6();
+
+    document.getElementById('dvChartLabel').textContent = chartNo;
+    document.getElementById('dvDateLabel').textContent  = displayDate(_dvDate);
+
+    // 테이블 렌더
+    var tbody = document.getElementById('dvTableBody');
+    tbody.innerHTML = '';
+    rows.forEach(function(d, idx) {
+      var tr = document.createElement('tr');
+      tr.style.background = idx % 2 === 0 ? '#fff' : '#f7f9ff';
+      var vals = [d.drug_code||'', d.drug_name||'', d.dose||'', d.daily_freq||'', d.days||'', d.method||''];
+      var aligns = ['left','left','center','center','center','center'];
+      vals.forEach(function(v, ci) {
+        var td = document.createElement('td');
+        td.style.cssText = 'padding:9px 10px;border-bottom:1px solid #f0f2f8;color:var(--text);text-align:'+aligns[ci]+';';
+        if (ci === 0) {
+          var span = document.createElement('span');
+          span.textContent = v;
+          span.style.cssText = 'font-family:monospace;font-size:11px;background:#eef3fe;color:#4f8ef7;padding:2px 7px;border-radius:4px;border:1px solid #c7d9fb;';
+          td.appendChild(span);
+        } else if (ci === 1) {
+          td.style.fontWeight = '600';
+          td.textContent = v;
+        } else {
+          td.textContent = v;
+        }
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('dvResultCard').classList.remove('hidden');
+    setStatus('dvStatus', 'success', '✓ ' + rows.length + '개 약물 조회 완료');
+  } catch(err) {
+    setStatus('dvStatus', 'error', '오류: ' + err.message);
+  }
+}
+
+function buildDvCaptureDom() {
+  var chart   = _dvChart || '';
+  var dateStr = document.getElementById('dvDateLabel').textContent || '';
+  var drugs   = _dvDrugs || [];
+
+  var wrap = document.createElement('div');
+  wrap.style.cssText = [
+    'position:fixed','top:-9999px','left:-9999px',
+    'background:#ffffff','padding:28px 32px','width:700px',
+    'font-family:Apple SD Gothic Neo,Malgun Gothic,sans-serif',
+    'box-sizing:border-box','z-index:-1'
+  ].join(';');
+
+  var hdr = document.createElement('div');
+  hdr.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:2px solid #c7d9fb;padding-bottom:14px;';
+  hdr.innerHTML =
+    '<div>'
+    + '<div style="font-size:11px;color:#888;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">한강의원 복용약물</div>'
+    + '<div style="font-size:22px;font-weight:900;color:#1a2a4a;">차트 <span style="color:#4f8ef7;">' + chart + '</span></div>'
+    + '</div>'
+    + '<div style="text-align:right;">'
+    + '<div style="font-size:11px;color:#888;margin-bottom:4px;">저장날짜</div>'
+    + '<div style="font-size:16px;font-weight:800;color:#4f8ef7;">' + dateStr + '</div>'
+    + '</div>';
+  wrap.appendChild(hdr);
+
+  var tbl = document.createElement('table');
+  tbl.style.cssText = 'width:100%;border-collapse:collapse;font-size:13px;';
+  var cols    = ['약물코드','약물명','용량','일투','일수','용법'];
+  var aligns  = ['left','left','center','center','center','center'];
+  var widths  = ['100px','auto','60px','50px','50px','60px'];
+  var thead   = document.createElement('thead');
+  var hrow    = document.createElement('tr');
+  cols.forEach(function(col, ci) {
+    var th = document.createElement('th');
+    th.textContent = col;
+    th.style.cssText = 'background:#eef3fe;color:#4f6ea0;font-size:11px;font-weight:700;padding:10px 12px;text-align:'+aligns[ci]+';border-bottom:2px solid #c7d9fb;width:'+widths[ci]+';';
+    hrow.appendChild(th);
+  });
+  thead.appendChild(hrow);
+  tbl.appendChild(thead);
+
+  var tbody = document.createElement('tbody');
+  if (!drugs.length) {
+    var norow = document.createElement('tr');
+    var notd  = document.createElement('td');
+    notd.colSpan = 6; notd.textContent = '약물 정보 없음';
+    notd.style.cssText = 'text-align:center;padding:16px;color:#aaa;';
+    norow.appendChild(notd); tbody.appendChild(norow);
+  } else {
+    drugs.forEach(function(d, idx) {
+      var tr = document.createElement('tr');
+      tr.style.background = idx % 2 === 0 ? '#fff' : '#f7f9ff';
+      var vals = [d.drug_code||'',d.drug_name||'',d.dose||'',d.daily_freq||'',d.days||'',d.method||''];
+      vals.forEach(function(v, ci) {
+        var td = document.createElement('td');
+        td.style.cssText = 'padding:11px 12px;border-bottom:1px solid #e8edf8;text-align:'+aligns[ci]+';color:#222;';
+        if (ci === 0) {
+          var span = document.createElement('span');
+          span.textContent = v;
+          span.style.cssText = 'font-family:monospace;font-size:11px;background:#eef3fe;color:#4f8ef7;padding:2px 8px;border-radius:4px;border:1px solid #c7d9fb;';
+          td.appendChild(span);
+        } else if (ci === 1) { td.style.fontWeight='600'; td.textContent=v; }
+        else { td.textContent=v; }
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+  tbl.appendChild(tbody);
+  wrap.appendChild(tbl);
+
+  var ftr = document.createElement('div');
+  ftr.style.cssText = 'margin-top:16px;text-align:right;font-size:10px;color:#bbb;';
+  ftr.textContent = '한강의원 — ' + new Date().toLocaleDateString('ko-KR');
+  wrap.appendChild(ftr);
+
+  document.body.appendChild(wrap);
+  return wrap;
+}
+
+async function dvSaveImage() {
+  if (!_dvDrugs.length) { alert('약물 조회를 먼저 하세요.'); return; }
+  if (typeof html2canvas === 'undefined') { alert('라이브러리 로딩 중, 잠시 후 다시 시도하세요.'); return; }
+  var wrap = buildDvCaptureDom();
+  try {
+    showToast('🖼️ 이미지 생성 중...');
+    var canvas = await html2canvas(wrap, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    document.body.removeChild(wrap);
+    var link = document.createElement('a');
+    link.download = '약물_' + (_dvChart||'') + '_' + (document.getElementById('dvDateLabel').textContent||'').replace(/[()]/g,'') + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('✅ 이미지 저장 완료!');
+  } catch(e) {
+    if (wrap.parentNode) document.body.removeChild(wrap);
+    alert('이미지 저장 오류: ' + e.message);
+  }
+}
+
+async function dvSavePDF() {
+  if (!_dvDrugs.length) { alert('약물 조회를 먼저 하세요.'); return; }
+  if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') { alert('라이브러리 로딩 중, 잠시 후 다시 시도하세요.'); return; }
+  var wrap = buildDvCaptureDom();
+  try {
+    showToast('📄 PDF 생성 중...');
+    var canvas = await html2canvas(wrap, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    document.body.removeChild(wrap);
+    var imgData = canvas.toDataURL('image/png');
+    var { jsPDF } = window.jspdf;
+    var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    var pageW = pdf.internal.pageSize.getWidth(), pageH = pdf.internal.pageSize.getHeight(), margin = 15;
+    var imgW = pageW - margin*2, imgH = (canvas.height/canvas.width)*imgW;
+    if (imgH > pageH-margin*2) { imgH=pageH-margin*2; imgW=(canvas.width/canvas.height)*imgH; }
+    pdf.addImage(imgData,'PNG',margin,margin,imgW,imgH);
+    pdf.save('약물_' + (_dvChart||'') + '_' + (document.getElementById('dvDateLabel').textContent||'').replace(/[()]/g,'') + '.pdf');
+    showToast('✅ PDF 저장 완료!');
+  } catch(e) {
+    if (wrap.parentNode) document.body.removeChild(wrap);
+    alert('PDF 저장 오류: ' + e.message);
+  }
+}
+
 
 </script>
 </body>
