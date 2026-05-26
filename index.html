@@ -846,7 +846,7 @@ function checkKey(){var k=localStorage.getItem('sb_anon_key');if(k){ANON_KEY=k;d
 
 // ── Supabase ─────────────────────────────────────────
 function sbH(){return{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY};}
-async function sbGet(t,p){var qs=Object.entries(p).map(function(e){return e[0]+'='+encodeURIComponent(e[1]);}).join('&');var r=await fetch(SUPA_URL+'/rest/v1/'+t+'?'+qs,{headers:sbH()});return r.json();}
+async function sbGet(t,p){var noEncode=['select','order','limit'];var qs=Object.entries(p).map(function(e){return noEncode.indexOf(e[0])>=0?e[0]+'='+e[1]:e[0]+'='+encodeURIComponent(e[1]);}).join('&');var r=await fetch(SUPA_URL+'/rest/v1/'+t+'?'+qs,{headers:sbH()});return r.json();}
 async function sbUpsert(t,d){var r=await fetch(SUPA_URL+'/rest/v1/'+t,{method:'POST',headers:Object.assign({},sbH(),{'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(d)});return r.status<300;}
 async function sbInsert(t,d){var r=await fetch(SUPA_URL+'/rest/v1/'+t,{method:'POST',headers:sbH(),body:JSON.stringify(d)});if(!r.ok){var msg=await r.text();throw new Error('['+t+'] '+r.status+': '+msg);}return true;}
 async function sbUpdate(t,m,d){var qs=Object.entries(m).map(function(e){return e[0]+'=eq.'+encodeURIComponent(e[1]);}).join('&');var r=await fetch(SUPA_URL+'/rest/v1/'+t+'?'+qs,{method:'PATCH',headers:sbH(),body:JSON.stringify(d)});if(!r.ok){var msg=await r.text();throw new Error('['+t+'] '+r.status+': '+msg);}return true;}
