@@ -4613,7 +4613,7 @@ async function loadDrugView() {
   document.getElementById('dvResultCard').classList.add('hidden');
 
   try {
-    var rows = await sbGet('patient_drugs',
+    var rows = await sbGet('drugs',
       { select: 'drug_code,drug_name,dose,daily_freq,days,method,saved_date,created_at',
         chart_no: 'eq.' + chartNo,
         order: 'id.asc' });
