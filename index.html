@@ -164,12 +164,101 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
   #tabClin nav{width:100px;}
 }
 
+/* ── 로그인 오버레이 ── */
+#loginOverlay{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#1a1d2e 0%,#2d3154 100%);display:flex;align-items:center;justify-content:center;}
+#loginBox{background:#fff;border-radius:18px;padding:36px 32px;width:340px;max-width:92vw;box-shadow:0 16px 48px rgba(0,0,0,0.35);text-align:center;}
+#loginBox .login-logo{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--accent);background:#eef3fe;padding:3px 12px;border-radius:6px;border:1px solid #c7d9fb;display:inline-block;margin-bottom:18px;}
+#loginBox h2{font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px;}
+#loginBox p{font-size:12px;color:var(--text2);margin-bottom:22px;}
+#loginBox input{width:100%;background:#f7f8fc;border:1px solid var(--border);border-radius:9px;padding:12px 14px;font-size:15px;outline:none;text-align:center;letter-spacing:3px;color:var(--text);margin-bottom:14px;transition:border-color .2s;font-family:monospace;}
+#loginBox input:focus{border-color:var(--accent);background:#fff;}
+#loginBox button{width:100%;padding:12px;border-radius:9px;border:none;background:linear-gradient(135deg,#4f8ef7,#7c5cfc);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:opacity .15s;}
+#loginBox button:hover{opacity:.88;}
+#loginErr{color:var(--danger);font-size:12px;margin-top:8px;min-height:18px;}
+
+/* ── 관리자 패널 오버레이 ── */
+#adminOverlay{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,0.45);display:none;align-items:flex-start;justify-content:center;padding-top:60px;}
+#adminOverlay.open{display:flex;}
+#adminBox{background:#fff;border-radius:16px;padding:24px 28px;width:560px;max-width:96vw;max-height:85vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.25);}
+#adminBox h3{font-size:16px;font-weight:800;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+.admin-section{margin-bottom:22px;}
+.admin-section-title{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.admin-pin-row{display:grid;grid-template-columns:2fr 3fr auto;gap:8px;align-items:center;margin-bottom:8px;}
+.admin-pin-row label{font-size:12px;color:var(--text2);font-weight:500;}
+.admin-pin-row input{background:#f7f8fc;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;outline:none;font-family:monospace;}
+.admin-pin-row input:focus{border-color:var(--accent);}
+
+/* ── 링크 그리드 소형 ── */
+#lk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:7px;}
+.lk-card{background:#fff;border:1px solid var(--border);border-radius:9px;padding:9px 11px;cursor:grab;display:flex;align-items:center;gap:8px;transition:all .18s;box-shadow:0 1px 4px rgba(0,0,0,.04);user-select:none;min-height:0;}
+.lk-card:hover{border-color:var(--accent);background:#f0f0ff;transform:translateY(-1px);}
+.lk-card-icon{width:22px;height:22px;border-radius:5px;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
+.lk-card-icon img{width:14px;height:14px;object-fit:contain;}
+.lk-card-text{flex:1;min-width:0;}
+.lk-card-name{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;}
+.lk-card-domain{font-size:9px;color:var(--text2);font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* ── 관리자 핀고정 링크 바 ── */
+#adminPinBar{background:#f7f8fc;border-bottom:1px solid var(--border);padding:5px 14px;display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
+#adminPinBar a{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--text);text-decoration:none;white-space:nowrap;transition:all .15s;}
+#adminPinBar a:hover{border-color:var(--accent);color:var(--accent);background:#eef3fe;}
+#adminPinBar a img{width:14px;height:14px;object-fit:contain;}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
+
+<!-- ══ 로그인 오버레이 ══ -->
+<div id="loginOverlay">
+  <div id="loginBox">
+    <div class="login-logo">MED·RX</div>
+    <h2>한강의원 환자관리시스템</h2>
+    <p>접속 비밀번호를 입력하세요</p>
+    <input type="password" id="loginPwInput" placeholder="••••••••" maxlength="20"
+           onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">🔐 접속</button>
+    <div id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ══ 관리자 패널 오버레이 ══ -->
+<div id="adminOverlay">
+  <div id="adminBox">
+    <h3>⚙️ 관리자 메뉴
+      <button onclick="closeAdmin()" style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);">✕</button>
+    </h3>
+
+    <!-- 핀고정 링크 편집 -->
+    <div class="admin-section">
+      <div class="admin-section-title">📌 핀고정 링크 (최상단 바, 최대 7개)</div>
+      <div id="adminPinEntries" style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px;"></div>
+      <button onclick="adminAddPinRow()" class="btn btn-outline" style="font-size:12px;">+ 링크 추가</button>
+    </div>
+
+    <!-- 비밀번호 변경 -->
+    <div class="admin-section">
+      <div class="admin-section-title">🔑 비밀번호 변경</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <input type="password" id="adminPw1" placeholder="새 비밀번호" style="flex:1;min-width:120px;background:#f7f8fc;border:1px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;outline:none;">
+        <input type="password" id="adminPw2" placeholder="확인" style="flex:1;min-width:120px;background:#f7f8fc;border:1px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;outline:none;">
+        <button onclick="adminChangePw()" class="btn btn-primary" style="font-size:12px;white-space:nowrap;">변경</button>
+      </div>
+      <div id="adminPwMsg" style="font-size:12px;margin-top:6px;min-height:16px;"></div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button onclick="closeAdmin()" class="btn btn-outline" style="font-size:13px;">취소</button>
+      <button onclick="adminSaveAll()" class="btn btn-success" style="font-size:13px;">💾 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 핀고정 링크 바 ══ -->
+<div id="adminPinBar" style="display:none;"></div>
+
 <header style="background:#1a1d2e;border-bottom:1px solid #2d3154;box-shadow:0 2px 8px rgba(0,0,0,0.25);flex-wrap:wrap;gap:6px;justify-content:center;">
   <div style="display:flex;align-items:center;gap:10px;min-width:0;">
     <span style="font-size:16px;color:#fff;font-weight:800;white-space:nowrap;">한강의원 <span style="font-size:16px;font-weight:800;color:#fff;">환자관리시스템</span></span>
@@ -197,6 +286,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
       ⏱️ 파일공유
     </a>
   </div>
+  <button onclick="openAdmin()" style="margin-left:auto;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:#fff;font-size:12px;font-weight:700;padding:7px 13px;cursor:pointer;white-space:nowrap;font-family:'Noto Sans KR',sans-serif;transition:all .15s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">⚙️ 관리자</button>
 </header>
 <div id="keyBanner">
   <span style="font-size:11px;color:var(--text2);">🔑 Supabase Key</span>
@@ -4236,7 +4326,7 @@ async function confirmDelete() {
       <div class="card-title" style="margin-bottom:0;">🔗 링크 목록</div>
       <span id="lk-count" style="font-size:12px;color:var(--text2);"></span>
     </div>
-    <div id="lk-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;">
+    <div id="lk-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:7px;">
       <div style="grid-column:1/-1;text-align:center;padding:28px;color:var(--text2);font-size:13px;border:1.5px dashed var(--border);border-radius:12px;">
         🌐 아래에서 링크를 추가해보세요
       </div>
@@ -4323,24 +4413,18 @@ function lkRender() {
     var favicon = '';
     try { favicon = 'https://www.google.com/s2/favicons?domain=' + new URL(link.url).origin + '&sz=32'; } catch(e) {}
     var safeUrl = (link.url||'').replace(/'/g,"\\'");
-    return '<div draggable="true" data-lk-idx="'+idx+'" '
+    return '<div class="lk-card" draggable="true" data-lk-idx="'+idx+'" '
       +'onclick="if(!_lkDragging)window.open(\''+safeUrl+'\',\'_blank\')" '
       +'ondragstart="lkDragStart(event,'+idx+')" '
       +'ondragover="lkDragOver(event)" '
       +'ondrop="lkDrop(event,'+idx+')" '
-      +'ondragend="lkDragEnd(event)" '
-      +'style="background:#fff;border:1px solid var(--border);border-radius:12px;'
-      +'padding:13px 15px;cursor:grab;display:flex;align-items:center;gap:10px;'
-      +'transition:all .18s;box-shadow:0 2px 8px rgba(0,0,0,.04);user-select:none;" '
-      +'onmouseover="if(!_lkDragging){this.style.borderColor=\'var(--accent)\';this.style.background=\'#f0f0ff\';this.style.transform=\'translateY(-2px)\'}" '
-      +'onmouseout="this.style.borderColor=\'var(--border)\';this.style.background=\'#fff\';this.style.transform=\'none\'">'
-      +'<div style="width:26px;height:26px;border-radius:6px;background:var(--bg);border:1px solid var(--border);'
-        +'display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">'
-        +(favicon ? '<img src="'+favicon+'" style="width:16px;height:16px;object-fit:contain;" onerror="this.style.display=\'none\';this.parentNode.innerHTML=\'🔗\'">' : '🔗')
+      +'ondragend="lkDragEnd(event)">'
+      +'<div class="lk-card-icon">'
+        +(favicon ? '<img src="'+favicon+'" onerror="this.style.display=\'none\';this.parentNode.innerHTML=\'🔗\'">' : '🔗')
       +'</div>'
-      +'<div style="flex:1;min-width:0;">'
-        +'<div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+lkEsc(link.name)+'</div>'
-        +'<div style="font-size:10px;color:var(--text2);font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+lkEsc(domain)+'</div>'
+      +'<div class="lk-card-text">'
+        +'<div class="lk-card-name">'+lkEsc(link.name)+'</div>'
+        +'<div class="lk-card-domain">'+lkEsc(domain)+'</div>'
       +'</div>'
       +'</div>';
   }).join('');
@@ -4426,6 +4510,144 @@ async function lkClearAll() {
 
 // ═══════════════════════════════════════════════════════
 function lkEsc(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+// ══ 로그인 / 관리자 시스템 ═══════════════════════════════
+(function(){
+  var STORAGE_KEY_PW   = 'han_app_pw';
+  var STORAGE_KEY_PINS = 'han_pin_links';
+  var DEFAULT_PW       = 'han1234';
+
+  function getSavedPw(){ return localStorage.getItem(STORAGE_KEY_PW) || DEFAULT_PW; }
+
+  // 로그인
+  window.doLogin = function(){
+    var val = document.getElementById('loginPwInput').value;
+    if(val === getSavedPw()){
+      document.getElementById('loginOverlay').style.display='none';
+      renderPinBar();
+    } else {
+      var err = document.getElementById('loginErr');
+      err.textContent = '❌ 비밀번호가 틀렸습니다';
+      setTimeout(function(){ err.textContent=''; },2000);
+      document.getElementById('loginPwInput').value='';
+    }
+  };
+
+  // ── 핀고정 링크 바 렌더 ──
+  function renderPinBar(){
+    var bar = document.getElementById('adminPinBar');
+    var pins = getPins();
+    if(!pins.length){ bar.style.display='none'; return; }
+    bar.style.display='flex';
+    bar.innerHTML = '<span style="font-size:10px;color:var(--text2);font-weight:700;margin-right:4px;white-space:nowrap;">📌</span>'
+      + pins.map(function(p){
+          if(!p.name||!p.url) return '';
+          var favicon='';
+          try{ favicon='https://www.google.com/s2/favicons?domain='+new URL(p.url).origin+'&sz=32'; }catch(e){}
+          var safe=(p.url||'').replace(/'/g,"\\'");
+          return '<a href="'+lkEsc(p.url)+'" target="_blank" rel="noopener">'
+            +(favicon?'<img src="'+favicon+'" onerror="this.style.display=\'none\'">':'')
+            +lkEsc(p.name)+'</a>';
+        }).join('');
+  }
+
+  function getPins(){
+    try{ return JSON.parse(localStorage.getItem(STORAGE_KEY_PINS)||'[]'); }catch(e){ return []; }
+  }
+  function savePins(arr){ localStorage.setItem(STORAGE_KEY_PINS, JSON.stringify(arr)); }
+
+  // ── 관리자 패널 열기 ──
+  window.openAdmin = function(){
+    var overlay = document.getElementById('adminOverlay');
+    overlay.classList.add('open');
+    adminPopulatePins();
+    document.getElementById('adminPwMsg').textContent='';
+    document.getElementById('adminPw1').value='';
+    document.getElementById('adminPw2').value='';
+  };
+  window.closeAdmin = function(){
+    document.getElementById('adminOverlay').classList.remove('open');
+  };
+
+  // 핀 입력 행 채우기
+  function adminPopulatePins(){
+    var pins = getPins();
+    var container = document.getElementById('adminPinEntries');
+    container.innerHTML='';
+    // 항상 7개 행 표시
+    for(var i=0;i<7;i++){
+      addAdminPinRowWith(pins[i]?pins[i].name:'', pins[i]?pins[i].url:'');
+    }
+  }
+
+  function addAdminPinRowWith(name, url){
+    var container = document.getElementById('adminPinEntries');
+    var rows = container.querySelectorAll('.admin-pin-row');
+    if(rows.length >= 7) return;
+    var row = document.createElement('div');
+    row.className='admin-pin-row';
+    row.innerHTML='<label style="font-size:12px;color:var(--text2);">이름</label>'
+      +'<input type="text" placeholder="사이트 이름" value="'+lkEsc(name||'')+'" '
+      +'style="background:#f7f8fc;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;outline:none;">'
+      +'<input type="url" placeholder="https://..." value="'+lkEsc(url||'')+'" '
+      +'style="background:#f7f8fc;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;outline:none;grid-column:2/span 2;">';
+    // Re-build as 3-col grid properly
+    row.innerHTML='<input type="text" placeholder="이름" value="'+lkEsc(name||'')+'" '
+      +'style="background:#f7f8fc;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;width:100%;outline:none;">'
+      +'<input type="url" placeholder="https://..." value="'+lkEsc(url||'')+'" '
+      +'style="background:#f7f8fc;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;width:100%;outline:none;">'
+      +'<button onclick="this.closest(\'.admin-pin-row\').remove()" style="background:none;border:1px solid transparent;border-radius:6px;color:var(--text2);cursor:pointer;padding:6px 9px;font-size:14px;" onmouseover="this.style.color=\'var(--danger)\'" onmouseout="this.style.color=\'var(--text2)\'">✕</button>';
+    container.appendChild(row);
+  }
+
+  window.adminAddPinRow = function(){
+    var container = document.getElementById('adminPinEntries');
+    if(container.querySelectorAll('.admin-pin-row').length >= 7){
+      alert('최대 7개까지 추가할 수 있습니다.');
+      return;
+    }
+    addAdminPinRowWith('','');
+  };
+
+  // 비밀번호 변경
+  window.adminChangePw = function(){
+    var pw1 = document.getElementById('adminPw1').value;
+    var pw2 = document.getElementById('adminPw2').value;
+    var msg = document.getElementById('adminPwMsg');
+    if(!pw1){ msg.style.color='var(--danger)'; msg.textContent='새 비밀번호를 입력하세요.'; return; }
+    if(pw1.length < 4){ msg.style.color='var(--danger)'; msg.textContent='4자리 이상 입력하세요.'; return; }
+    if(pw1!==pw2){ msg.style.color='var(--danger)'; msg.textContent='비밀번호가 일치하지 않습니다.'; return; }
+    localStorage.setItem(STORAGE_KEY_PW, pw1);
+    msg.style.color='var(--success)';
+    msg.textContent='✅ 비밀번호가 변경되었습니다.';
+    document.getElementById('adminPw1').value='';
+    document.getElementById('adminPw2').value='';
+  };
+
+  // 전체 저장 (핀 링크)
+  window.adminSaveAll = function(){
+    var rows = document.querySelectorAll('#adminPinEntries .admin-pin-row');
+    var pins = [];
+    rows.forEach(function(row){
+      var inputs = row.querySelectorAll('input');
+      var name = inputs[0]?inputs[0].value.trim():'';
+      var url  = inputs[1]?inputs[1].value.trim():'';
+      if(name && url){
+        if(!url.match(/^https?:\/\//)) url='https://'+url;
+        pins.push({name:name, url:url});
+      }
+    });
+    savePins(pins);
+    renderPinBar();
+    closeAdmin();
+    showToast('✅ 관리자 설정 저장 완료');
+  };
+
+  // 초기: 로그인 화면 표시
+  document.getElementById('loginOverlay').style.display='flex';
+  // 이미 로그인된 세션이라면 (새로고침 시 유지 안함 - 보안상 항상 로그인 요구)
+})();
+// ═══════════════════════════════════════════════════════
 
 var _lkEditorOpen = true;
 function lkToggleEditor() {
