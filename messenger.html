@@ -1269,6 +1269,9 @@ function renderApp(){
   :`<div class="empty">←<span>대화 상대 선택</span></div>`;
 
   const standbyBannerHtml=(standbyMode&&isStandbyTarget(me))?renderStandbyBanner():'';
+  const mainContentHtml=standbyMode
+    ?'<div class="empty" style="flex:1;">←<span>대화 상대 선택</span></div>'
+    :chatHtml;
 
   document.getElementById('main-content').innerHTML=`
     <div id="app">
@@ -1282,7 +1285,7 @@ function renderApp(){
       </div>
       <div class="chat-area" style="display:flex;flex-direction:column;">
         ${standbyBannerHtml}
-        ${standbyMode ? '<div class="empty" style="flex:1;">←<span>대화 상대 선택</span></div>' : chatHtml}
+        ${mainContentHtml}
       </div>
     </div>`;
 
