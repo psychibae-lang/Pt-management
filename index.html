@@ -307,6 +307,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
     <button class="nav-tab" id="navSearch" onclick="switchTab('search');loadSearchTab()">🔍 접수조회</button>
     <button class="nav-tab" id="navClin" onclick="switchTab('clin');initClinTab()">🧠 임상가척도</button>
     <button class="nav-tab" id="navNotice" onclick="switchTab('notice');bpInit()" style="color:#2d7d46;font-weight:700;">📢 공지사항</button>
+    <button class="nav-tab" id="navMessenger" onclick="switchTab('messenger')" style="color:#534AB7;font-weight:700;">💬 메신저</button>
   </div>
   <div class="nav-tabs-row" id="grpJohoe">
     <button class="nav-tab" id="navProxy" onclick="switchTab('proxy')">📋 대리처방</button>
@@ -961,7 +962,7 @@ async function claudeCall(body){var r=await fetch(PROXY,{method:'POST',headers:{
 async function sheetPost(body){body._sheet_action=true;var r=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+ANON_KEY},body:JSON.stringify(body)});return r.json();}
 
 // ── 탭 ───────────────────────────────────────────────
-var TABS=['links','patient','appt','drug','search','clin','proxy','selcare','sms','phone','stats','drugview','notice'];
+var TABS=['links','patient','appt','drug','search','clin','proxy','selcare','sms','phone','stats','drugview','notice','messenger'];
 // ── 약물 일괄 입력 ──────────────────────────────────
 function applyBulkFill(){
   var dose=document.getElementById('bulkDose')?document.getElementById('bulkDose').value.trim():'';
@@ -5017,6 +5018,11 @@ async function dvSavePDF() {
 
 
 </script>
+<!-- ══ 메신저 탭 ══ -->
+<div id="tabMessenger" class="hidden" style="max-width:100%;margin:0;padding:0;height:calc(100vh - 120px);">
+  <iframe id="messengerFrame" src="messenger.html" style="width:100%;height:100%;border:none;display:block;" allowfullscreen></iframe>
+</div>
+
 <!-- ══ 공지사항 & 비품관리 탭 ══ -->
 <div id="tabNotice" class="hidden" style="max-width:760px;margin:0 auto;padding:14px 12px 60px;">
 
