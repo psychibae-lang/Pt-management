@@ -5038,39 +5038,10 @@ async function dvSavePDF() {
 
 <!-- ── 공지사항 패널 ── -->
 <div id="bpPanelNotice">
-  <!-- 전체 공지 -->
-  <div style="margin-bottom:14px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-      <span style="font-size:11px;font-weight:700;color:#888;letter-spacing:1px;text-transform:uppercase;">전체 공지 <span style="background:#e8f0df;color:#2d5016;border-radius:8px;padding:1px 8px;font-size:10px;">전체</span></span>
-      <button onclick="bpOpenNoticeEdit('full')" style="background:#e8f0df;color:#2d7d46;border:1.5px solid #8bc34a;border-radius:6px;font-size:11px;padding:3px 10px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-weight:700;">✎ 편집</button>
-    </div>
-    <div style="background:#fff;border:1px solid #e2ddd6;border-left:4px solid #4a7c25;border-radius:10px;padding:14px 16px;box-shadow:0 1px 6px rgba(0,0,0,0.05);">
-      <div id="bpNoticeFullText" style="font-size:13px;line-height:1.7;white-space:pre-wrap;color:#1a1a1a;"><em style="color:#aaa;">전체 공지가 없습니다.</em></div>
-      <div id="bpNoticeFullMeta" style="font-size:11px;color:#aaa;margin-top:6px;"></div>
-    </div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+    <button id="bpNoticeRefreshBtn" onclick="bpRefreshNotices()" style="background:#f7f8fc;border:1px solid #e2ddd6;border-radius:8px;font-size:12px;padding:5px 12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;color:#555;display:flex;align-items:center;gap:5px;">🔄 새로고침</button>
   </div>
-  <!-- 오전 공지 -->
-  <div style="margin-bottom:14px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-      <span style="font-size:11px;font-weight:700;color:#888;letter-spacing:1px;text-transform:uppercase;">오전 파트 공지 <span style="background:#fdebd0;color:#e67e22;border-radius:8px;padding:1px 8px;font-size:10px;">오전</span></span>
-      <button onclick="bpOpenNoticeEdit('morning')" style="background:#fdebd0;color:#e67e22;border:1.5px solid #f0b27a;border-radius:6px;font-size:11px;padding:3px 10px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-weight:700;">✎ 편집</button>
-    </div>
-    <div style="background:#fff;border:1px solid #e2ddd6;border-left:4px solid #e67e22;border-radius:10px;padding:14px 16px;box-shadow:0 1px 6px rgba(0,0,0,0.05);">
-      <div id="bpNoticeMorningText" style="font-size:13px;line-height:1.7;white-space:pre-wrap;color:#1a1a1a;"><em style="color:#aaa;">오전 파트 공지가 없습니다.</em></div>
-      <div id="bpNoticeMorningMeta" style="font-size:11px;color:#aaa;margin-top:6px;"></div>
-    </div>
-  </div>
-  <!-- 오후 공지 -->
-  <div style="margin-bottom:14px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-      <span style="font-size:11px;font-weight:700;color:#888;letter-spacing:1px;text-transform:uppercase;">오후 파트 공지 <span style="background:#d6eaf8;color:#2980b9;border-radius:8px;padding:1px 8px;font-size:10px;">오후</span></span>
-      <button onclick="bpOpenNoticeEdit('afternoon')" style="background:#d6eaf8;color:#2980b9;border:1.5px solid #85c1e9;border-radius:6px;font-size:11px;padding:3px 10px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-weight:700;">✎ 편집</button>
-    </div>
-    <div style="background:#fff;border:1px solid #e2ddd6;border-left:4px solid #2980b9;border-radius:10px;padding:14px 16px;box-shadow:0 1px 6px rgba(0,0,0,0.05);">
-      <div id="bpNoticeAfternoonText" style="font-size:13px;line-height:1.7;white-space:pre-wrap;color:#1a1a1a;"><em style="color:#aaa;">오후 파트 공지가 없습니다.</em></div>
-      <div id="bpNoticeAfternoonMeta" style="font-size:11px;color:#aaa;margin-top:6px;"></div>
-    </div>
-  </div>
+  <div id="bpNoticeGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
 </div>
 
 <!-- ── 비품관리 패널 ── -->
@@ -5148,12 +5119,6 @@ async function dvSavePDF() {
   <div style="background:#fff;border-radius:14px;padding:24px;width:100%;max-width:460px;max-height:88vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.18);position:relative;">
     <button onclick="bpCloseModal('bpNoticeModal')" style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:1.2rem;cursor:pointer;color:#aaa;line-height:1;">✕</button>
     <h3 id="bpNoticeModalTitle" style="margin-bottom:16px;font-size:15px;color:#2d5016;">공지 편집</h3>
-    <div style="margin-bottom:12px;">
-      <label style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;display:block;margin-bottom:5px;">작성자</label>
-      <select id="bpNoticeAuthor" style="width:100%;border:1.5px solid #e2ddd6;border-radius:7px;padding:9px 11px;font-size:13px;font-family:'Noto Sans KR',sans-serif;background:#f5f3ee;outline:none;">
-        <option value="">-- 선택 --</option>
-      </select>
-    </div>
     <div style="margin-bottom:12px;">
       <label style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;display:block;margin-bottom:5px;">내용</label>
       <textarea id="bpNoticeContent" rows="6" style="width:100%;border:1.5px solid #e2ddd6;border-radius:7px;padding:9px 11px;font-size:13px;font-family:'Noto Sans KR',sans-serif;background:#f5f3ee;resize:vertical;outline:none;" placeholder="공지 내용을 입력하세요..."></textarea>
@@ -5301,9 +5266,8 @@ var bpData = {
     {id:33,name:'커피스틱'},{id:34,name:'풀'},{id:35,name:'굵은 테이프'},
     {id:36,name:'손세정제'},{id:37,name:'고무장갑'},
   ],
-  notices:{full:'',morning:'',afternoon:''},
-  noticeAuthor:{full:'',morning:'',afternoon:''},
-  noticeUpdated:{full:'',morning:'',afternoon:''},
+  notices:{notice1:'',notice2:'',notice3:'',notice4:'',notice5:'',notice6:'',notice7:'',notice8:'',notice9:'',notice10:''},
+  noticeUpdated:{notice1:'',notice2:'',notice3:'',notice4:'',notice5:'',notice6:'',notice7:'',notice8:'',notice9:'',notice10:''},
 };
 var bpState = {nums:{}, toggles:{}};
 var bpNextId = 100;
@@ -5336,6 +5300,7 @@ async function bpLoadConfig() {
   var client = bpSb();
   if(!client){bpLoadLocal();return;}
   try {
+    // 비품/직원/기간 설정은 bp_main에서
     var resp = await client.from('app_config').select('data').eq('id','bp_main').single();
     if(resp.data && resp.data.data) {
       var d = resp.data.data;
@@ -5343,9 +5308,13 @@ async function bpLoadConfig() {
       if(d.periods) bpData.periods = d.periods;
       if(d.numItems) bpData.numItems = d.numItems;
       if(d.toggleItems) bpData.toggleItems = d.toggleItems;
-      if(d.notices) bpData.notices = d.notices;
-      if(d.noticeAuthor) bpData.noticeAuthor = d.noticeAuthor;
-      if(d.noticeUpdated) bpData.noticeUpdated = d.noticeUpdated;
+    }
+    // 공지는 main에서 (메인PC/접수PC 공유)
+    var nresp = await client.from('app_config').select('data').eq('id','main').single();
+    if(nresp.data && nresp.data.data) {
+      var nd = nresp.data.data;
+      if(nd.notices) bpData.notices = nd.notices;
+      if(nd.noticeUpdated) bpData.noticeUpdated = nd.noticeUpdated;
     }
     bpSetDbStatus('ok','● 연결됨');
   } catch(e){ bpLoadLocal(); bpSetDbStatus('err','● 오류'); return; }
@@ -5357,7 +5326,7 @@ function bpLoadLocal() {
   try {
     var s = localStorage.getItem('bpData2');
     if(s){ var d=JSON.parse(s);
-      ['inspectors','periods','numItems','toggleItems','notices','noticeAuthor','noticeUpdated'].forEach(function(k){if(d[k])bpData[k]=d[k];});
+      ['inspectors','periods','numItems','toggleItems','notices','noticeUpdated'].forEach(function(k){if(d[k])bpData[k]=d[k];});
     }
   } catch(e){}
   bpRenderAll();
@@ -5367,7 +5336,17 @@ async function bpSaveConfig() {
   try{ localStorage.setItem('bpData2', JSON.stringify(bpData)); }catch(e){}
   var client = bpSb();
   if(!client) return;
-  try { await client.from('app_config').upsert({id:'bp_main', data:bpData}); } catch(e){ console.warn('bp save err',e); }
+  try {
+    // 비품/직원/기간 설정은 bp_main에 저장
+    var configData = {inspectors:bpData.inspectors,periods:bpData.periods,numItems:bpData.numItems,toggleItems:bpData.toggleItems};
+    await client.from('app_config').upsert({id:'bp_main', data:configData});
+    // 공지는 main에 저장 (메인PC/접수PC 공유)
+    var noticeData = {notices:bpData.notices,noticeUpdated:bpData.noticeUpdated};
+    // main의 기존 데이터를 먼저 가져와 병합
+    var existing = await client.from('app_config').select('data').eq('id','main').single();
+    var merged = (existing.data && existing.data.data) ? Object.assign({},existing.data.data,noticeData) : noticeData;
+    await client.from('app_config').upsert({id:'main', data:merged});
+  } catch(e){ console.warn('bp save err',e); }
 }
 
 function bpSetDbStatus(type, txt) {
@@ -5462,26 +5441,36 @@ function bpRenderToggleRows(){
 }
 
 function bpRenderNotices(){
-  ['full','morning','afternoon'].forEach(function(type){
-    var capType = type.charAt(0).toUpperCase()+type.slice(1);
-    var textEl = document.getElementById('bpNotice'+capType+'Text');
-    var metaEl = document.getElementById('bpNotice'+capType+'Meta');
-    if(!textEl) return;
-    var txt = bpData.notices[type];
-    var author = bpData.noticeAuthor[type];
-    var upd = bpData.noticeUpdated[type];
+  var colors = ['#4a7c25','#2980b9','#8e44ad','#c0392b','#d35400','#16a085','#2c3e50','#7d6608','#1a5276','#6c3483'];
+  var grid = document.getElementById('bpNoticeGrid');
+  if(!grid) return;
+  grid.innerHTML = '';
+  for(var i=1;i<=10;i++){
+    var key = 'notice'+i;
+    var txt = bpData.notices[key]||'';
+    var upd = bpData.noticeUpdated[key]||'';
+    var col = colors[i-1];
+    var card = document.createElement('div');
+    card.style.cssText = 'background:#fff;border:1px solid #e2ddd6;border-left:4px solid '+col+';border-radius:10px;padding:12px 14px;box-shadow:0 1px 6px rgba(0,0,0,0.05);position:relative;min-height:90px;cursor:pointer;';
+    card.onclick = (function(k){ return function(){ bpOpenNoticeEdit(k); }; })(key);
+    var label = document.createElement('div');
+    label.style.cssText = 'font-size:10px;font-weight:700;color:'+col+';margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;';
+    label.innerHTML = '<span>공지 '+i+'</span><span style="font-size:10px;color:#bbb;font-weight:400;">✎ 편집</span>';
+    var body = document.createElement('div');
+    body.style.cssText = 'font-size:13px;line-height:1.6;white-space:pre-wrap;color:#1a1a1a;';
     if(txt && txt.trim()){
-      textEl.innerHTML = bpEsc(txt).replace(/\n/g,'<br>');
-      var metaParts = [];
-      if(author) metaParts.push('작성자: '+bpEsc(author));
-      if(upd) metaParts.push('수정: '+bpEsc(upd));
-      metaEl.textContent = metaParts.join(' · ');
+      body.innerHTML = bpEsc(txt).replace(/\n/g,'<br>');
     } else {
-      var labels = {full:'전체',morning:'오전 파트',afternoon:'오후 파트'};
-      textEl.innerHTML = '<em style="color:#aaa;">'+labels[type]+' 공지가 없습니다.</em>';
-      metaEl.textContent = '';
+      body.innerHTML = '<em style="color:#ccc;">내용 없음</em>';
     }
-  });
+    var meta = document.createElement('div');
+    meta.style.cssText = 'font-size:10px;color:#bbb;margin-top:5px;';
+    if(upd) meta.textContent = '수정: '+upd;
+    card.appendChild(label);
+    card.appendChild(body);
+    card.appendChild(meta);
+    grid.appendChild(card);
+  }
 }
 
 function bpUpdateSummary(){
@@ -5594,25 +5583,41 @@ window.bpDeleteRecord = async function(){
   bpLoadHistory();
 };
 
+// ── 공지 새로고침 ──
+window.bpRefreshNotices = async function(){
+  var btn = document.getElementById('bpNoticeRefreshBtn');
+  if(btn){ btn.textContent='⏳ 로딩 중...'; btn.disabled=true; }
+  var client = bpSb();
+  if(client){
+    try {
+      var nresp = await client.from('app_config').select('data').eq('id','main').single();
+      if(nresp.data && nresp.data.data) {
+        var nd = nresp.data.data;
+        if(nd.notices) bpData.notices = nd.notices;
+        if(nd.noticeUpdated) bpData.noticeUpdated = nd.noticeUpdated;
+      }
+      bpSetDbStatus('ok','● 연결됨');
+    } catch(e){ bpSetDbStatus('err','● 오류'); }
+  }
+  bpRenderNotices();
+  if(btn){ btn.textContent='🔄 새로고침'; btn.disabled=false; }
+  bpToast('공지를 새로고침했습니다','ok');
+};
+
 // ── 공지 편집 ──
-window.bpOpenNoticeEdit = function(type){
-  bpCurrentNoticeType=type;
-  var labels={full:'전체 공지 편집',morning:'오전 파트 공지 편집',afternoon:'오후 파트 공지 편집'};
-  document.getElementById('bpNoticeModalTitle').textContent=labels[type];
-  document.getElementById('bpNoticeContent').value=bpData.notices[type]||'';
-  var curAuthor=bpData.noticeAuthor[type]||'';
-  var sel=document.getElementById('bpNoticeAuthor');
-  sel.innerHTML='<option value="">-- 선택 --</option>'+bpData.inspectors.map(function(n){return '<option value="'+bpEsc(n)+'"'+(n===curAuthor?' selected':'')+'>'+bpEsc(n)+'</option>';}).join('');
+window.bpOpenNoticeEdit = function(key){
+  bpCurrentNoticeType=key;
+  var num=key.replace('notice','');
+  document.getElementById('bpNoticeModalTitle').textContent='공지 '+num+' 편집';
+  document.getElementById('bpNoticeContent').value=bpData.notices[key]||'';
   bpOpenModal('bpNoticeModal');
 };
 
 window.bpSaveNotice = async function(){
   var txt=document.getElementById('bpNoticeContent').value.trim();
-  var author=document.getElementById('bpNoticeAuthor').value;
   bpData.notices[bpCurrentNoticeType]=txt;
-  bpData.noticeAuthor[bpCurrentNoticeType]=author;
-  if(txt){var now=new Date().toLocaleString('ko-KR');bpData.noticeUpdated[bpCurrentNoticeType]=now;}
-  else{bpData.noticeUpdated[bpCurrentNoticeType]='';bpData.noticeAuthor[bpCurrentNoticeType]='';}
+  if(txt){bpData.noticeUpdated[bpCurrentNoticeType]=new Date().toLocaleString('ko-KR');}
+  else{bpData.noticeUpdated[bpCurrentNoticeType]='';}
   bpRenderNotices();
   await bpSaveConfig();
   bpCloseModal('bpNoticeModal');
@@ -5621,7 +5626,6 @@ window.bpSaveNotice = async function(){
 
 window.bpClearNotice = async function(){
   bpData.notices[bpCurrentNoticeType]='';
-  bpData.noticeAuthor[bpCurrentNoticeType]='';
   bpData.noticeUpdated[bpCurrentNoticeType]='';
   bpRenderNotices();
   await bpSaveConfig();
