@@ -1177,6 +1177,42 @@ function isAdmin(id){return ADMIN_IDS.includes(id);}
 function isStaff(id){return false;}
 function canManage(id){return isAdmin(id);}
 
+// ── 대기모드 ──────────────────────────────────────────────
+// 원장/접수1/접수2 가 메시지 전송 후 자동으로 대기모드 진입
+// 대기모드: peer=null 상태 + 상단 배너 (다른 탭 작업 중 팝업 알림 정상 수신)
+const STANDBY_IDS=['wonjang','jesu1','jesu2'];
+let standbyMode=false;
+let lastPeerBeforeStandby=null;
+function isStandbyTarget(id){return STANDBY_IDS.includes(id);}
+
+function enterStandby(){
+  if(!isStandbyTarget(me)) return;
+  standbyMode=true;
+  lastPeerBeforeStandby=peer;
+  stopChat();
+  peer=null;
+  renderApp();
+}
+
+function exitStandby(){
+  standbyMode=false;
+  if(lastPeerBeforeStandby) peer=lastPeerBeforeStandby;
+  renderApp();
+}
+
+function renderStandbyBanner(){
+  return '<div id="standby-banner" style="background:linear-gradient(135deg,#534AB7,#7c5cfc);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.15);">'
+    +'<span style="font-size:15px;">💤</span>'
+    +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:12px;font-weight:700;">대기모드 중</div>'
+      +'<div style="font-size:10px;opacity:0.8;margin-top:1px;">메시지 오면 팝업으로 알림 &middot; 다른 탭 작업해도 OK</div>'
+    +'</div>'
+    +'<button onclick="exitStandby()" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">'
+      +'대기모드 끔'
+    +'</button>'
+  +'</div>';
+}
+
 function renderApp(){
   const myA=acct(me);
   // 원장·접수 전체 목록, guest만 원장으로 제한
@@ -1232,6 +1268,8 @@ function renderApp(){
     </div>`
   :`<div class="empty">←<span>대화 상대 선택</span></div>`;
 
+  const standbyBannerHtml=(standbyMode&&isStandbyTarget(me))?renderStandbyBanner():'';
+
   document.getElementById('main-content').innerHTML=`
     <div id="app">
       <div class="sidebar">
@@ -1242,7 +1280,10 @@ function renderApp(){
         </div>
         <div class="user-list">${sideHtml}</div>
       </div>
-      <div class="chat-area">${chatHtml}</div>
+      <div class="chat-area" style="display:flex;flex-direction:column;">
+        ${standbyBannerHtml}
+        ${standbyMode ? '<div class="empty" style="flex:1;">←<span>대화 상대 선택</span></div>' : chatHtml}
+      </div>
     </div>`;
 
   if(peer){startChatListener();setTimeout(()=>document.getElementById('minput')?.focus(),100);}
@@ -1293,7 +1334,7 @@ function renderMsgs(msgs){
   list.scrollTop=list.scrollHeight;
 }
 
-function selectPeer(uid){stopChat();peer=uid;unread[uid]=0;setLR(uid);renderApp();}
+function selectPeer(uid){stopChat();peer=uid;unread[uid]=0;setLR(uid);standbyMode=false;renderApp();}
 function sanitizePeer(){
   // guest만 원장과 자동 연결, 나머지는 peer 그대로
   if(me==='guest1'||me==='guest2'){
@@ -1307,7 +1348,9 @@ function sendMsg(){
   const text=inp.value.trim(); if(!text) return;
   inp.value='';
   db.ref('msgs/'+mkey(me,peer)).push({from:me,text,ts:Date.now()});
-  inp.focus();
+  // 원장/접수1/접수2 → 메시지 전송 후 자동 대기모드
+  if(isStandbyTarget(me)) enterStandby();
+  else inp.focus();
 }
 
 function uploadFile(input){
@@ -1328,6 +1371,8 @@ function uploadFile(input){
       if(progWrap)progWrap.style.display='none';
       if(progBar)progBar.style.width='0%';
       db.ref('msgs/'+mkey(me,peer)).push({from:me,ts:Date.now(),type:isImage?'image':'file',url,name:file.name});
+      // 원장/접수1/접수2 → 파일 전송 후 자동 대기모드
+      if(isStandbyTarget(me)) enterStandby();
     }
   );
 }
