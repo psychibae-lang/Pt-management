@@ -1142,6 +1142,18 @@ function startBadgeListeners(){
         sendOsNotif(label, msgText);
         // 플로팅 팝업
         showFloatPopup(u.id, m);
+        // 부모 페이지(다른 탭 작업 중)에 알림 전달
+        try{
+          if(window.parent&&window.parent!==window){
+            window.parent.postMessage({
+              type:'HANGANG_NEW_MSG',
+              fromId: u.id,
+              fromLabel: label,
+              msgText: msgText,
+              unread: unread[u.id]||1
+            },'*');
+          }
+        }catch(e){}
       }
       if(m.from===u.id&&peer===u.id){unread[u.id]=0;updateBadgeEl(u.id);}
     });
