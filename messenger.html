@@ -1307,7 +1307,14 @@ function sendMsg(){
   const text=inp.value.trim(); if(!text) return;
   inp.value='';
   db.ref('msgs/'+mkey(me,peer)).push({from:me,text,ts:Date.now()});
-  inp.focus();
+  // 원장·접수1·접수2는 메시지 전송 후 자동으로 대기(peer=null) 상태로 전환
+  // → 새 메시지 수신 시 팝업 알림을 받을 수 있게 됨
+  const isStaff=(me==='wonjang'||me==='jesu1'||me==='jesu2');
+  if(isStaff){
+    setTimeout(()=>{stopChat();peer=null;renderApp();},300);
+  } else {
+    inp.focus();
+  }
 }
 
 function uploadFile(input){
