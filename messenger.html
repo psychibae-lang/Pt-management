@@ -49,7 +49,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .online-dot{position:absolute;bottom:0;right:0;width:8px;height:8px;border-radius:50%;background:#ccc;border:1.5px solid #fff;}
 .online-dot.on{background:#1D9E75;}
 .call-btn.start:disabled,.vcall-btn:disabled{opacity:0.35;cursor:not-allowed;}
-.sm{width:22px;height:22px;font-size:9px;}
+.sm{width:30px;height:30px;font-size:10px;}
 .c0{background:#EEEDFE;color:#3C3489;}.c1{background:#E1F5EE;color:#085041;}
 .c2{background:#FAECE7;color:#712B13;}.c3{background:#E6F1FB;color:#0C447C;}
 .c4{background:#FAEEDA;color:#633806;}
@@ -74,13 +74,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 #incoming .accept{background:#1D9E75;color:#fff;}
 #incoming .reject{background:#E53E3E;color:#fff;}
 .msgs{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px;}
-.mrow{display:flex;align-items:flex-end;gap:4px;}
+.mrow{display:flex;align-items:flex-end;gap:6px;}
 .mrow.mine{flex-direction:row-reverse;}
-.bubble{max-width:82%;padding:7px 10px;border-radius:14px;font-size:12px;line-height:1.5;word-break:break-word;}
+.bubble{max-width:80%;padding:9px 13px;border-radius:16px;font-size:14px;line-height:1.6;word-break:break-word;font-weight:500;}
 .bubble.t{background:#f2f2f7;color:#1a1a2e;border-bottom-left-radius:3px;}
 .bubble.m{background:#534AB7;color:#fff;border-bottom-right-radius:3px;}
+/* 계정별 고유 말풍선 색상 */
+.bubble.bc0{background:#534AB7;color:#fff;border-bottom-right-radius:3px;}
+.bubble.bc1{background:#1D9E75;color:#fff;border-bottom-right-radius:3px;}
+.bubble.bc2{background:#c0392b;color:#fff;border-bottom-right-radius:3px;}
+.bubble.bc3{background:#2471a3;color:#fff;border-bottom-right-radius:3px;}
+.bubble.bc4{background:#b7770d;color:#fff;border-bottom-right-radius:3px;}
+.bubble.bc5{background:#7d3c98;color:#fff;border-bottom-right-radius:3px;}
+.bubble.bc6{background:#1a5276;color:#fff;border-bottom-right-radius:3px;}
+/* 상대방 말풍선 색상 */
+.bubble.rc0{background:#EEEDFE;color:#3C3489;border-bottom-left-radius:3px;}
+.bubble.rc1{background:#D5F5E3;color:#0b6b4a;border-bottom-left-radius:3px;}
+.bubble.rc2{background:#FADBD8;color:#922b21;border-bottom-left-radius:3px;}
+.bubble.rc3{background:#D6EAF8;color:#1a5276;border-bottom-left-radius:3px;}
+.bubble.rc4{background:#FDEBD0;color:#784212;border-bottom-left-radius:3px;}
+.bubble.rc5{background:#E8DAEF;color:#6c3483;border-bottom-left-radius:3px;}
+.bubble.rc6{background:#D1ECF1;color:#0c5460;border-bottom-left-radius:3px;}
 .bubble.call-log{background:#f0f0f0;color:#666;font-size:11px;text-align:center;border-radius:8px;}
 .mt{font-size:9px;color:#bbb;margin-bottom:2px;}
+.sender-name{font-size:11px;font-weight:700;margin-bottom:3px;opacity:0.75;}
 .msg-img{max-width:100%;max-height:160px;border-radius:10px;cursor:pointer;display:block;}
 .msg-file{display:flex;align-items:center;gap:6px;padding:4px 0;}
 .msg-file a{font-size:11px;color:inherit;text-decoration:underline;word-break:break-all;}
@@ -638,6 +655,11 @@ let vMuted=false;     // 음소거 상태
 let vCamOff=false;    // 카메라 끔 상태
 
 function acct(id){return ACCOUNTS.find(a=>a.id===id);}
+function acctColorIdx(id){
+  const cidx={'c0':0,'c1':1,'c2':2,'c3':3,'c4':4};
+  const a=acct(id);
+  return a?( cidx[a.c]??0 ):0;
+}
 function mkey(a,b){return [a,b].sort().join('_vs_');}
 function ckey(a,b){return 'call_'+[a,b].sort().join('_vs_');}
 function esc(t){return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -1514,11 +1536,17 @@ function renderMsgs(msgs){
   const list=document.getElementById('msglist');
   if(!list) return;
   const pA=acct(peer);
+  const myIdx=acctColorIdx(me);
+  const peerIdx=acctColorIdx(peer);
+  const myA=acct(me);
   let html='',lastD='';
   for(const m of msgs){
     const d=dstr(m.ts);
     if(d!==lastD){html+=`<div class="dsep">${d}</div>`;lastD=d;}
     const mine=m.from===me;
+    // 보낸 사람이 me도 peer도 아닌 경우(그룹 등) 대비
+    const senderA=acct(m.from);
+    const senderIdx=acctColorIdx(m.from);
     let content='';
     if(m.type==='image') content=`<img class="msg-img" src="${esc(m.url)}" onclick="openModal('${esc(m.url)}')" alt="이미지"/>`;
     else if(m.type==='file') content=`<div class="msg-file">📎 <a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.name)}</a></div>`;
@@ -1528,11 +1556,14 @@ function renderMsgs(msgs){
     if(isLog){
       html+=`<div class="dsep">${content} · ${tstr(m.ts)}</div>`;
     } else {
+      const bubbleCls=mine?`bc${myIdx}`:`rc${senderIdx}`;
+      const nameColor=mine?`color:#534AB7`:`color:${['#3C3489','#0b6b4a','#922b21','#1a5276','#784212'][senderIdx]||'#555'}`;
       html+=`<div class="mrow${mine?' mine':''}">
-        ${!mine?`<div class="av sm ${pA.c}">${pA.label.slice(0,2)}</div>`:''}
+        ${!mine?`<div class="av sm ${(senderA||pA).c}">${(senderA||pA).label.slice(0,2)}</div>`:''}
         <div>
+          <div class="sender-name" style="text-align:${mine?'right':'left'};${nameColor}">${mine?(myA?.label||me):(senderA?.label||m.from)}</div>
           <div class="mt" style="text-align:${mine?'right':'left'}">${tstr(m.ts)}</div>
-          <div class="bubble ${mine?'m':'t'}">${content}</div>
+          <div class="bubble ${bubbleCls}">${content}</div>
         </div>
       </div>`;
     }
