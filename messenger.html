@@ -122,6 +122,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .admin-cancel{padding:9px 14px;background:#f0f0f0;color:#555;border:none;border-radius:7px;font-size:12px;cursor:pointer;}
 .admin-msg{font-size:11px;color:#1D9E75;text-align:center;height:16px;margin-top:6px;}
 .admin-btn-top{font-size:10px;background:#f0efff;color:#534AB7;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-weight:600;}
+.extra-acct-del{width:26px;height:26px;border-radius:50%;background:#fde8e8;color:#E53E3E;border:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.extra-acct-del:hover{background:#E53E3E;color:#fff;}
 /* 탭 */
 .admin-tabs{display:flex;border-bottom:1.5px solid #eee;margin-bottom:14px;}
 .admin-tab{flex:1;padding:8px 4px;font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;color:#aaa;border-bottom:2px solid transparent;margin-bottom:-1.5px;}
@@ -177,7 +179,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div id="wrap">
   <div id="titlebar">
     <span style="font-size:16px;">💬</span>
-    <span class="ttl">한강의원</span>
+    <span class="ttl" id="clinic-name-title">한강의원</span>
     <span class="sub" id="me-badge"></span>
     <button id="admin-top-btn" class="admin-btn-top" onclick="openAdmin()" style="display:none;">⚙️ 관리</button>
   </div>
@@ -202,6 +204,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="admin-tab on" onclick="switchAdminTab('accounts')">⚙️ 계정</button>
       <button class="admin-tab" onclick="switchAdminTab('logs')">📋 통화기록</button>
       <button class="admin-tab" onclick="switchAdminTab('chats')">🗑️ 대화삭제</button>
+      <button class="admin-tab" onclick="switchAdminTab('firebase')">🔥 연결</button>
     </div>
     <!-- 계정 관리 탭 -->
     <div class="admin-pane on" id="adm-pane-accounts">
@@ -229,6 +232,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="admin-row"><label>표시 이름</label><input id="adm-label-g2" type="text" placeholder="예: guest2"/></div>
         <div class="admin-row"><label>비밀번호</label><input id="adm-pw-g2" type="text" placeholder="새 비밀번호"/></div>
       </div>
+      <!-- 추가 계정 목록 -->
+      <div id="extra-accounts-wrap"></div>
+      <!-- 계정 추가 버튼 -->
+      <button onclick="addExtraAccountRow()" style="width:100%;padding:9px;background:#f0efff;color:#534AB7;border:2px dashed #c5c0f0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:12px;">＋ 계정 추가</button>
+
       <div class="admin-section">
         <div class="admin-section-title">💬 메시지 팝업 설정</div>
         <div class="admin-row">
@@ -266,6 +274,47 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div id="chat-clear-msg" style="font-size:11px;text-align:center;margin-top:8px;min-height:16px;color:#1D9E75;"></div>
       <div class="admin-btns" style="margin-top:10px;">
         <button class="admin-cancel" onclick="closeAdmin()">닫기</button>
+      </div>
+    </div>
+    <!-- Firebase 연결 설정 탭 -->
+    <div class="admin-pane" id="adm-pane-firebase">
+      <div class="admin-section">
+        <div class="admin-section-title">🏥 병원/그룹 이름</div>
+        <div class="admin-row">
+          <label>표시 이름</label>
+          <input id="adm-clinic-name" type="text" placeholder="예: 한강의원"/>
+        </div>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-title">🔥 Firebase 데이터베이스</div>
+        <div class="admin-row">
+          <label>Database URL</label>
+          <input id="adm-fb-url" type="text" placeholder="https://your-app-default-rtdb.firebaseio.com/"/>
+        </div>
+        <div class="admin-row">
+          <label>Storage Bucket</label>
+          <input id="adm-fb-bucket" type="text" placeholder="your-app.firebasestorage.app"/>
+        </div>
+        <div style="background:#fff8e1;border-radius:7px;padding:9px 10px;font-size:10px;color:#7a5800;line-height:1.6;margin-top:4px;">
+          ⚠️ <b>Firebase 규칙 주의:</b> 새 프로젝트는 Realtime Database 규칙을 <code style="background:#f0e0a0;padding:1px 4px;border-radius:3px;">read/write: true</code>로 설정해야 합니다.<br/>
+          변경 후 페이지가 자동으로 새로고침됩니다.
+        </div>
+      </div>
+      <div class="admin-section" style="background:#eef6ff;">
+        <div class="admin-section-title" style="color:#0C447C;">📋 현재 연결 정보</div>
+        <div style="font-size:11px;color:#444;line-height:1.8;word-break:break-all;">
+          <div><b>이름:</b> <span id="fb-current-name">—</span></div>
+          <div><b>DB:</b> <span id="fb-current-url">—</span></div>
+          <div><b>Storage:</b> <span id="fb-current-bucket">—</span></div>
+        </div>
+      </div>
+      <div class="admin-msg" id="adm-fb-msg"></div>
+      <div class="admin-btns">
+        <button class="admin-cancel" onclick="closeAdmin()">취소</button>
+        <button class="admin-save" onclick="saveFBSettings()">저장 후 재시작</button>
+      </div>
+      <div style="margin-top:10px;text-align:center;">
+        <button onclick="resetFBSettings()" style="font-size:11px;color:#888;background:none;border:none;cursor:pointer;text-decoration:underline;">기본값으로 초기화</button>
       </div>
     </div>
   </div>
@@ -313,9 +362,38 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script>
-firebase.initializeApp({
+// ── Firebase 설정 (localStorage 우선, 없으면 기본값) ──
+const DEFAULT_FB_CONFIG={
   databaseURL:"https://notice-ped-default-rtdb.firebaseio.com/",
-  storageBucket:"temp-share-image-hanriver.firebasestorage.app"
+  storageBucket:"temp-share-image-hanriver.firebasestorage.app",
+  clinicName:"한강의원"
+};
+function loadFBConfig(){
+  try{
+    const s=localStorage.getItem('fb_config');
+    return s?{...DEFAULT_FB_CONFIG,...JSON.parse(s)}:{...DEFAULT_FB_CONFIG};
+  }catch(e){return {...DEFAULT_FB_CONFIG};}
+}
+function saveFBConfig(cfg){
+  localStorage.setItem('fb_config',JSON.stringify(cfg));
+}
+const FB_CFG=loadFBConfig();
+
+// 타이틀 반영
+document.addEventListener('DOMContentLoaded',()=>{
+  document.title=FB_CFG.clinicName+' 메신저';
+  const el=document.getElementById('clinic-name-title');
+  if(el) el.textContent=FB_CFG.clinicName;
+});
+// titlebar 이름 즉시 반영 (DOMContentLoaded 전 실행 시)
+(function(){
+  const el=document.querySelector('.ttl');
+  if(el) el.textContent=FB_CFG.clinicName;
+})();
+
+firebase.initializeApp({
+  databaseURL: FB_CFG.databaseURL,
+  storageBucket: FB_CFG.storageBucket
 });
 const db=firebase.database();
 const storage=firebase.storage();
@@ -335,7 +413,7 @@ async function loadAccountsFromDB(){
     const snap=await db.ref('admin/accounts').once('value');
     const d=snap.val();
     if(d){
-      ACCOUNTS=DEFAULT_ACCOUNTS.map(a=>{
+      const base=DEFAULT_ACCOUNTS.map(a=>{
         if(a.id==='wonjang'&&d.wonjang) return {...a, label:d.wonjang.label||a.label, pw:d.wonjang.pw||a.pw};
         if(a.id==='jesu1'&&d.jesu1) return {...a, label:d.jesu1.label||a.label, pw:d.jesu1.pw||a.pw};
         if(a.id==='jesu2'&&d.jesu2) return {...a, label:d.jesu2.label||a.label, pw:d.jesu2.pw||a.pw};
@@ -343,8 +421,36 @@ async function loadAccountsFromDB(){
         if(a.id==='guest2'&&d.guest2) return {...a, label:d.guest2.label||a.label, pw:d.guest2.pw||a.pw};
         return a;
       });
+      // 추가 계정 로드
+      const extras=d.extras?Object.entries(d.extras).map(([id,v])=>({id,label:v.label||id,pw:v.pw||'',c:'c4',extra:true})):[];
+      ACCOUNTS=[...base,...extras];
     }
   }catch(e){console.warn('계정 로드 실패',e);}
+}
+
+// 추가 계정 행 렌더링
+let extraRows=[]; // [{id, label, pw}]
+function renderExtraAccountRows(){
+  const wrap=document.getElementById('extra-accounts-wrap');
+  if(!wrap) return;
+  wrap.innerHTML=extraRows.map((r,i)=>`
+    <div class="admin-section" id="extra-row-${i}" style="position:relative;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div class="admin-section-title" style="margin-bottom:0;">추가 계정 ${i+1}</div>
+        <button class="extra-acct-del" onclick="removeExtraRow(${i})" title="삭제">✕</button>
+      </div>
+      <div class="admin-row"><label>아이디 (영문/숫자)</label><input id="extra-id-${i}" type="text" placeholder="예: staff1" value="${r.id||''}"/></div>
+      <div class="admin-row"><label>표시 이름</label><input id="extra-label-${i}" type="text" placeholder="예: 간호사1" value="${r.label||''}"/></div>
+      <div class="admin-row"><label>비밀번호</label><input id="extra-pw-${i}" type="text" placeholder="비밀번호" value="${r.pw||''}"/></div>
+    </div>`).join('');
+}
+function addExtraAccountRow(){
+  extraRows.push({id:'',label:'',pw:''});
+  renderExtraAccountRows();
+}
+function removeExtraRow(i){
+  extraRows.splice(i,1);
+  renderExtraAccountRows();
 }
 
 // 관리자 모달
@@ -363,6 +469,9 @@ function openAdmin(){
   document.getElementById('adm-pw-g1').value=g1?.pw||'';
   document.getElementById('adm-label-g2').value=g2?.label||'';
   document.getElementById('adm-pw-g2').value=g2?.pw||'';
+  // 추가 계정 로드
+  extraRows=ACCOUNTS.filter(a=>a.extra).map(a=>({id:a.id,label:a.label,pw:a.pw}));
+  renderExtraAccountRows();
   document.getElementById('adm-msg').textContent='';
   document.getElementById('adm-popup-dur').value=popupDurationSec||0;
   document.getElementById('adminModal').classList.add('show');
@@ -385,16 +494,44 @@ async function saveAdmin(){
     document.getElementById('adm-msg').textContent='모든 항목을 입력해주세요.';
     return;
   }
+  // 추가 계정 수집 및 유효성 검사
+  const collectedExtras=[];
+  for(let i=0;i<extraRows.length;i++){
+    const eid=(document.getElementById('extra-id-'+i)?.value||'').trim().replace(/\s+/g,'');
+    const elabel=(document.getElementById('extra-label-'+i)?.value||'').trim();
+    const epw=(document.getElementById('extra-pw-'+i)?.value||'').trim();
+    if(!eid||!elabel||!epw){
+      document.getElementById('adm-msg').style.color='#e53e3e';
+      document.getElementById('adm-msg').textContent=`추가 계정 ${i+1}: 아이디/이름/비밀번호를 모두 입력해주세요.`;
+      return;
+    }
+    const reserved=['wonjang','jesu1','jesu2','guest1','guest2'];
+    if(reserved.includes(eid)){
+      document.getElementById('adm-msg').style.color='#e53e3e';
+      document.getElementById('adm-msg').textContent=`'${eid}'는 사용할 수 없는 아이디입니다.`;
+      return;
+    }
+    if(collectedExtras.find(x=>x.id===eid)){
+      document.getElementById('adm-msg').style.color='#e53e3e';
+      document.getElementById('adm-msg').textContent=`아이디 '${eid}'가 중복됩니다.`;
+      return;
+    }
+    collectedExtras.push({id:eid,label:elabel,pw:epw});
+  }
   try{
+    const extrasObj={};
+    collectedExtras.forEach(e=>{extrasObj[e.id]={label:e.label,pw:e.pw};});
     await db.ref('admin/accounts').set({
       wonjang:{pw:pWj},
       jesu1:{label:l1, pw:p1},
       jesu2:{label:l2, pw:p2},
       guest1:{label:lG1, pw:pG1},
       guest2:{label:lG2, pw:pG2},
+      extras:extrasObj,
     });
     // 로컬 반영
-    ACCOUNTS=ACCOUNTS.map(a=>{
+    const BASE_COLORS=['c1','c2','c3','c4','c0'];
+    const baseAccounts=DEFAULT_ACCOUNTS.map(a=>{
       if(a.id==='wonjang') return {...a,pw:pWj};
       if(a.id==='jesu1') return {...a,label:l1,pw:p1};
       if(a.id==='jesu2') return {...a,label:l2,pw:p2};
@@ -402,6 +539,9 @@ async function saveAdmin(){
       if(a.id==='guest2') return {...a,label:lG2,pw:pG2};
       return a;
     });
+    const extraAccounts=collectedExtras.map((e,i)=>({id:e.id,label:e.label,pw:e.pw,c:BASE_COLORS[i%BASE_COLORS.length],extra:true}));
+    ACCOUNTS=[...baseAccounts,...extraAccounts];
+    extraRows=collectedExtras.map(e=>({...e}));
     document.getElementById('adm-msg').style.color='#1D9E75';
     document.getElementById('adm-msg').textContent='✅ 저장 완료!';
     // 팝업 지속시간 저장
@@ -768,13 +908,16 @@ function saveMemo(doSave){
 // 관리 탭 전환
 function switchAdminTab(tab){
   document.querySelectorAll('.admin-tab').forEach((b,i)=>{
-    b.classList.toggle('on', (i===0&&tab==='accounts')||(i===1&&tab==='logs')||(i===2&&tab==='chats'));
+    b.classList.toggle('on',
+      (i===0&&tab==='accounts')||(i===1&&tab==='logs')||(i===2&&tab==='chats')||(i===3&&tab==='firebase'));
   });
   document.getElementById('adm-pane-accounts').classList.toggle('on', tab==='accounts');
   document.getElementById('adm-pane-logs').classList.toggle('on', tab==='logs');
   document.getElementById('adm-pane-chats').classList.toggle('on', tab==='chats');
+  document.getElementById('adm-pane-firebase').classList.toggle('on', tab==='firebase');
   if(tab==='logs') loadCallLogs();
   if(tab==='chats') loadChatClearList();
+  if(tab==='firebase') openFBTab();
 }
 
 function loadChatClearList(){
@@ -1299,6 +1442,9 @@ function sanitizePeer(){
   if(me==='guest1'||me==='guest2'){
     peer='wonjang';
   }
+  // extra 계정도 guest처럼 원장과 자동 연결
+  const myAcct=acct(me);
+  if(myAcct?.extra) peer='wonjang';
 }
 
 function sendMsg(){
@@ -1338,6 +1484,43 @@ function uploadFile(input){
   );
 }
 
+// ── Firebase 설정 탭 ──
+function openFBTab(){
+  const cfg=loadFBConfig();
+  document.getElementById('adm-clinic-name').value=cfg.clinicName||'';
+  document.getElementById('adm-fb-url').value=cfg.databaseURL||'';
+  document.getElementById('adm-fb-bucket').value=cfg.storageBucket||'';
+  document.getElementById('fb-current-name').textContent=cfg.clinicName||'—';
+  document.getElementById('fb-current-url').textContent=cfg.databaseURL||'—';
+  document.getElementById('fb-current-bucket').textContent=cfg.storageBucket||'—';
+  document.getElementById('adm-fb-msg').textContent='';
+}
+function saveFBSettings(){
+  const name=(document.getElementById('adm-clinic-name').value||'').trim();
+  const url=(document.getElementById('adm-fb-url').value||'').trim();
+  const bucket=(document.getElementById('adm-fb-bucket').value||'').trim();
+  if(!name||!url||!bucket){
+    const m=document.getElementById('adm-fb-msg');
+    m.style.color='#e53e3e'; m.textContent='모든 항목을 입력해주세요.'; return;
+  }
+  if(!url.startsWith('https://')||!url.includes('firebaseio')){
+    const m=document.getElementById('adm-fb-msg');
+    m.style.color='#e53e3e'; m.textContent='올바른 Database URL 형식이 아닙니다.'; return;
+  }
+  saveFBConfig({clinicName:name, databaseURL:url, storageBucket:bucket});
+  // 로컬 로그인 정보 초기화 (다른 그룹이면 계정이 다를 수 있음)
+  localStorage.removeItem('hangang_me');
+  const m=document.getElementById('adm-fb-msg');
+  m.style.color='#1D9E75'; m.textContent='✅ 저장 완료! 페이지를 재시작합니다...';
+  setTimeout(()=>location.reload(), 1200);
+}
+function resetFBSettings(){
+  if(!confirm('기본 Firebase 설정(한강의원)으로 초기화하시겠습니까?')) return;
+  localStorage.removeItem('fb_config');
+  localStorage.removeItem('hangang_me');
+  location.reload();
+}
+
 /* ── 초기화 ── */
 (async()=>{
   await loadAccountsFromDB();
@@ -1346,7 +1529,7 @@ function uploadFile(input){
   db.ref('admin/accounts').on('value',snap=>{
     const d=snap.val();
     if(!d) return;
-    ACCOUNTS=DEFAULT_ACCOUNTS.map(a=>{
+    const base=DEFAULT_ACCOUNTS.map(a=>{
       if(a.id==='wonjang'&&d.wonjang) return {...a, pw:d.wonjang.pw||a.pw};
       if(a.id==='jesu1'&&d.jesu1) return {...a, label:d.jesu1.label||a.label, pw:d.jesu1.pw||a.pw};
       if(a.id==='jesu2'&&d.jesu2) return {...a, label:d.jesu2.label||a.label, pw:d.jesu2.pw||a.pw};
@@ -1354,6 +1537,9 @@ function uploadFile(input){
       if(a.id==='guest2'&&d.guest2) return {...a, label:d.guest2.label||a.label, pw:d.guest2.pw||a.pw};
       return a;
     });
+    const BASE_COLORS=['c1','c2','c3','c4','c0'];
+    const extras=d.extras?Object.entries(d.extras).map(([id,v],i)=>({id,label:v.label||id,pw:v.pw||'',c:BASE_COLORS[i%BASE_COLORS.length],extra:true})):[];
+    ACCOUNTS=[...base,...extras];
     // 로그인 화면이면 버튼 이름 갱신
     if(!me) showLogin();
     else if(document.querySelector('.sidebar')) renderApp();
