@@ -25,6 +25,27 @@ header{background:#fff;border-bottom:1px solid var(--border);padding:10px 20px;d
 .nav-tab:hover{color:var(--text);}.nav-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
 .mob-nav{display:none;}
 .container{max-width:680px;margin:0 auto;padding:16px 12px;display:flex;flex-direction:column;gap:14px;}
+/* ── 탭 리사이즈 핸들 ── */
+#tabResizeHandle{
+  position:fixed;bottom:14px;right:14px;
+  width:34px;height:34px;
+  background:#fff;border:1.5px solid var(--border);border-radius:9px;
+  display:none;align-items:center;justify-content:center;
+  cursor:nwse-resize;z-index:500;
+  box-shadow:0 2px 12px rgba(0,0,0,0.13);
+  color:var(--text2);font-size:16px;
+  transition:all 0.15s;user-select:none;
+}
+#tabResizeHandle.visible{display:flex;}
+#tabResizeHandle:hover{border-color:var(--accent);color:var(--accent);background:#eef3fe;}
+#tabWidthBar{
+  position:fixed;bottom:56px;right:14px;
+  background:#fff;border:1.5px solid var(--border);border-radius:8px;
+  padding:5px 10px;font-size:11px;color:var(--text2);
+  z-index:500;display:none;white-space:nowrap;
+  box-shadow:0 2px 8px rgba(0,0,0,0.10);pointer-events:none;
+}
+#tabWidthBar.visible{display:block;}
 .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,0.04);}
 .card-title{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
 .card-title::before{content:'';width:3px;height:12px;background:var(--accent);border-radius:2px;display:inline-block;}
@@ -5884,6 +5905,173 @@ function bpEsc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&
 </style>
 
 <div id="mainFloatPopups"></div>
+
+<!-- ══ 탭 리사이즈 핸들 ══ -->
+<div id="tabResizeHandle" title="드래그: 폭/높이 조절 | 더블클릭: 초기화">⤡</div>
+<div id="tabWidthBar"></div>
+
+<script>
+(function(){
+  var RESIZABLE_TABS=['appt','patient','drug','search','clin','proxy','selcare','sms','phone','stats','drugview','links','notice','messenger'];
+  var MESSENGER_TABS=['messenger'];
+
+  var _tabSizes={};
+  try{_tabSizes=JSON.parse(localStorage.getItem('tabSizes')||'{}');}catch(e){}
+
+  var handle=document.getElementById('tabResizeHandle');
+  var widthBar=document.getElementById('tabWidthBar');
+  var _activeTab=null,_dragging=false;
+  var _startX,_startY,_startW,_startH,_el;
+
+  function getTabEl(tab){
+    var T=tab.charAt(0).toUpperCase()+tab.slice(1);
+    return document.getElementById('tab'+T);
+  }
+
+  function applySize(tab){
+    var el=getTabEl(tab);if(!el)return;
+    var sz=_tabSizes[tab];if(!sz)return;
+    if(MESSENGER_TABS.indexOf(tab)>=0){
+      el.style.height=sz.h+'px';
+    } else {
+      var maxVw=window.innerWidth-28;
+      var w=Math.min(sz.w,maxVw);
+      el.style.maxWidth=w+'px';
+      el.style.width=w+'px';
+      if(sz.h)el.style.minHeight=sz.h+'px';
+    }
+  }
+
+  function updateBar(tab){
+    var el=getTabEl(tab);if(!el)return;
+    widthBar.textContent='폭 '+el.offsetWidth+'px · 높이 '+el.offsetHeight+'px';
+  }
+
+  function showHandle(tab){
+    _activeTab=tab;
+    handle.classList.add('visible');
+    applySize(tab);
+    updateBar(tab);
+  }
+
+  function hideHandle(){
+    handle.classList.remove('visible');
+    widthBar.classList.remove('visible');
+    _activeTab=null;
+  }
+
+  // switchTab 후킹
+  window.addEventListener('DOMContentLoaded',function(){
+    var orig=window.switchTab;
+    window.switchTab=function(tab){
+      if(orig)orig(tab);
+      if(RESIZABLE_TABS.indexOf(tab)>=0){
+        setTimeout(function(){showHandle(tab);},60);
+      } else {
+        hideHandle();
+      }
+    };
+    // 페이지 로드 시 현재 활성 탭 감지
+    RESIZABLE_TABS.forEach(function(tab){
+      var el=getTabEl(tab);
+      if(el&&!el.classList.contains('hidden')){
+        setTimeout(function(){showHandle(tab);},150);
+      }
+    });
+  });
+
+  // 더블클릭: 초기화
+  handle.addEventListener('dblclick',function(){
+    if(!_activeTab)return;
+    delete _tabSizes[_activeTab];
+    try{localStorage.setItem('tabSizes',JSON.stringify(_tabSizes));}catch(e){}
+    var el=getTabEl(_activeTab);
+    if(el){
+      if(MESSENGER_TABS.indexOf(_activeTab)>=0){
+        el.style.height='calc(100vh - 120px)';
+      } else {
+        el.style.maxWidth='';el.style.width='';el.style.minHeight='';
+      }
+    }
+    widthBar.classList.remove('visible');
+  });
+
+  // 마우스 드래그
+  handle.addEventListener('mousedown',function(e){
+    e.preventDefault();
+    if(!_activeTab)return;
+    _el=getTabEl(_activeTab);if(!_el)return;
+    _dragging=true;
+    _startX=e.clientX;_startY=e.clientY;
+    _startW=_el.offsetWidth;_startH=_el.offsetHeight;
+    widthBar.classList.add('visible');
+    document.addEventListener('mousemove',onDrag);
+    document.addEventListener('mouseup',stopDrag);
+  });
+
+  // 터치 드래그
+  handle.addEventListener('touchstart',function(e){
+    e.preventDefault();
+    if(!_activeTab)return;
+    _el=getTabEl(_activeTab);if(!_el)return;
+    var t=e.touches[0];
+    _dragging=true;
+    _startX=t.clientX;_startY=t.clientY;
+    _startW=_el.offsetWidth;_startH=_el.offsetHeight;
+    widthBar.classList.add('visible');
+    document.addEventListener('touchmove',onDragTouch,{passive:false});
+    document.addEventListener('touchend',stopDragTouch);
+  },{passive:false});
+
+  function applyNewSize(newW,newH){
+    if(MESSENGER_TABS.indexOf(_activeTab)>=0){
+      _el.style.height=Math.max(200,newH)+'px';
+    } else {
+      var maxVw=window.innerWidth-28;
+      newW=Math.min(Math.max(320,newW),maxVw);
+      newH=Math.max(200,newH);
+      _el.style.maxWidth=newW+'px';
+      _el.style.width=newW+'px';
+      _el.style.minHeight=newH+'px';
+    }
+    widthBar.textContent='폭 '+_el.offsetWidth+'px · 높이 '+_el.offsetHeight+'px';
+  }
+
+  function onDrag(e){
+    if(!_dragging||!_el)return;
+    var dx=e.clientX-_startX,dy=e.clientY-_startY;
+    applyNewSize(_startW+dx*2,_startH+dy);
+  }
+  function onDragTouch(e){
+    if(!_dragging||!_el)return;
+    e.preventDefault();
+    var t=e.touches[0];
+    var dx=t.clientX-_startX,dy=t.clientY-_startY;
+    applyNewSize(_startW+dx*2,_startH+dy);
+  }
+
+  function saveSize(){
+    if(!_el||!_activeTab)return;
+    _tabSizes[_activeTab]={w:_el.offsetWidth,h:_el.offsetHeight};
+    try{localStorage.setItem('tabSizes',JSON.stringify(_tabSizes));}catch(e){}
+  }
+
+  function stopDrag(){
+    _dragging=false;
+    document.removeEventListener('mousemove',onDrag);
+    document.removeEventListener('mouseup',stopDrag);
+    saveSize();
+    setTimeout(function(){widthBar.classList.remove('visible');},1500);
+  }
+  function stopDragTouch(){
+    _dragging=false;
+    document.removeEventListener('touchmove',onDragTouch);
+    document.removeEventListener('touchend',stopDragTouch);
+    saveSize();
+    setTimeout(function(){widthBar.classList.remove('visible');},1500);
+  }
+})();
+</script>
 
 <script>
 (function(){
