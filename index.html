@@ -1489,7 +1489,7 @@ function renderPatientDrugs(){
     +'<div style="font-size:12px;font-weight:700;color:var(--accent);">'+savedDisp+'</div></div></div>'
     +'<div style="overflow-x:auto;padding:0 0 4px;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr>';
   html+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr>';
-  ['','약물코드','약물명','용량','일투','일수','용법',''].forEach(function(h){html+='<th style="background:#f5f7fa;color:#666;font-size:10px;font-weight:700;text-transform:uppercase;padding:6px 8px;text-align:left;border-bottom:2px solid #e0e4ef;">'+h+'</th>';});
+  ['','약물코드','약물명','하루총용량','일투','일수','용법',''].forEach(function(h){html+='<th style="background:#f5f7fa;color:#666;font-size:10px;font-weight:700;text-transform:uppercase;padding:6px 8px;text-align:left;border-bottom:2px solid #e0e4ef;">'+h+'</th>';});
   html+='</tr></thead><tbody>';
   if(!_patientDrugs.length){
     html+='<tr><td colspan="8" style="padding:12px;color:#aaa;text-align:center;">약물 정보 없음 — 위 + 버튼으로 추가하세요</td></tr>';
@@ -4738,7 +4738,7 @@ function buildDrugCaptureDom() {
   var tbl = document.createElement('table');
   tbl.style.cssText = 'width:100%;border-collapse:collapse;font-size:13px;';
 
-  var cols = ['약물코드','약물명','용량','일투','일수','용법'];
+  var cols = ['약물코드','약물명','하루총용량','일투','일수','용법'];
   var aligns = ['left','left','center','center','center','center'];
   var widths = ['100px','auto','60px','50px','50px','60px'];
 
@@ -4953,7 +4953,7 @@ function buildDvCaptureDom() {
 
   var tbl = document.createElement('table');
   tbl.style.cssText = 'width:100%;border-collapse:collapse;font-size:13px;';
-  var cols    = ['약물코드','약물명','용량','일투','일수','용법'];
+  var cols    = ['약물코드','약물명','하루총용량','일투','일수','용법'];
   var aligns  = ['left','left','center','center','center','center'];
   var widths  = ['100px','auto','60px','50px','50px','60px'];
   var thead   = document.createElement('thead');
