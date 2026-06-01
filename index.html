@@ -1441,6 +1441,34 @@ function getDrugSavedLabel(chartNo) {
   return d;
 }
 
+function getMethodDesc(code) {
+  var c = (code || '').toLowerCase().trim();
+  var map = {
+    'b1':   '오전',
+    'b2':   '점심',
+    'b3':   '저녁',
+    'b4':   '취침전',
+    'b12':  '오전·점심',
+    'b13':  '오전·저녁',
+    'b14':  '오전·취침전',
+    'b23':  '점심·저녁',
+    'b24':  '점심·취침전',
+    'b34':  '저녁·취침전',
+    'b123': '오전·점심·저녁',
+    'b124': '오전·점심·취침전',
+    'b134': '오전·저녁·취침전',
+    'b234': '점심·저녁·취침전',
+    'b1234':'오전·점심·저녁·취침전',
+    'tid':  '1일 3회',
+    'bid':  '1일 2회',
+    'qid':  '1일 4회',
+    'qd':   '1일 1회',
+    'prn':  '필요시 복용',
+    'sos':  '필요시 복용',
+  };
+  return map[c] || c;
+}
+
 function renderPatientDrugs(){
   var el=document.getElementById('piDrugArea'),cnt=document.getElementById('piDrugCount');
   cnt.textContent=_patientDrugs.length?_patientDrugs.length+'개':'';
@@ -1489,7 +1517,13 @@ function renderPatientDrugs(){
     +'<div style="font-size:12px;font-weight:700;color:var(--accent);">'+savedDisp+'</div></div></div>'
     +'<div style="overflow-x:auto;padding:0 0 4px;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr>';
   html+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr>';
-  ['','약물코드','약물명','하루총용량','일투','일수','용법',''].forEach(function(h){html+='<th style="background:#f5f7fa;color:#666;font-size:10px;font-weight:700;text-transform:uppercase;padding:6px 8px;text-align:left;border-bottom:2px solid #e0e4ef;">'+h+'</th>';});
+  ['','약물코드','약물명','하루총용량','일투','일수','용법','용법설명',''].forEach(function(h){
+    var isTotal = (h==='하루총용량');
+    var thStyle = isTotal
+      ? 'background:#fff3cd;color:#b45309;font-size:10px;font-weight:700;text-transform:uppercase;padding:6px 8px;text-align:center;border-bottom:2px solid #f6cc52;'
+      : 'background:#f5f7fa;color:#666;font-size:10px;font-weight:700;text-transform:uppercase;padding:6px 8px;text-align:left;border-bottom:2px solid #e0e4ef;';
+    html+='<th style="'+thStyle+'">'+h+'</th>';
+  });
   html+='</tr></thead><tbody>';
   if(!_patientDrugs.length){
     html+='<tr><td colspan="8" style="padding:12px;color:#aaa;text-align:center;">약물 정보 없음 — 위 + 버튼으로 추가하세요</td></tr>';
@@ -1511,8 +1545,15 @@ function renderPatientDrugs(){
       ['dose','daily_freq','days','method'].forEach(function(f,fi){
         var fw=['36px','30px','30px','36px'][fi];
         var val=((d[f]||'')).toString().replace(/"/g,'&quot;');
-        html+='<td style="'+ts+'"><input data-pidx="'+i+'" data-pfield="'+f+'" style="'+is+'width:'+fw+';" value="'+val+'" onchange="onDrugChange('+i+',\''+f+'\',this.value)"></td>';
+        if(f==='dose'){
+          html+='<td style="'+ts+';background:#fffbea;text-align:center;">'
+            +'<input data-pidx="'+i+'" data-pfield="'+f+'" style="'+is+'width:'+fw+';font-weight:700;font-size:14px;color:#b45309;text-align:center;" value="'+val+'" onchange="onDrugChange('+i+',\''+f+'\',this.value)"></td>';
+        } else {
+          html+='<td style="'+ts+'"><input data-pidx="'+i+'" data-pfield="'+f+'" style="'+is+'width:'+fw+';" value="'+val+'" onchange="onDrugChange('+i+',\''+f+'\',this.value)"></td>';
+        }
       });
+      // 용법설명 칸
+      html+='<td style="'+ts+';white-space:nowrap;font-size:11px;color:#6b7280;padding:6px 8px;">'+getMethodDesc(d.method)+'</td>';
       html+='<td style="'+ts+'"><button onclick="delPatientDrug('+i+')" style="background:none;border:none;color:#bbb;cursor:pointer;font-size:12px;">✕</button></td>';
       html+='</tr>';
     });
@@ -4339,10 +4380,11 @@ async function confirmDelete() {
           <tr>
             <th style="background:#eef3fe;color:#4f6ea0;font-size:10px;font-weight:700;padding:8px 10px;text-align:left;border-bottom:2px solid #c7d9fb;">약물코드</th>
             <th style="background:#eef3fe;color:#4f6ea0;font-size:10px;font-weight:700;padding:8px 10px;text-align:left;border-bottom:2px solid #c7d9fb;">약물명</th>
-            <th style="background:#eef3fe;color:#4f6ea0;font-size:10px;font-weight:700;padding:8px 10px;text-align:center;border-bottom:2px solid #c7d9fb;">하루총용량</th>
+            <th style="background:#fff3cd;color:#b45309;font-size:10px;font-weight:700;padding:8px 10px;text-align:center;border-bottom:2px solid #f6cc52;">하루총용량</th>
             <th style="background:#eef3fe;color:#4f6ea0;font-size:10px;font-weight:700;padding:8px 10px;text-align:center;border-bottom:2px solid #c7d9fb;">일투</th>
             <th style="background:#eef3fe;color:#4f6ea0;font-size:10px;font-weight:700;padding:8px 10px;text-align:center;border-bottom:2px solid #c7d9fb;">일수</th>
             <th style="background:#eef3fe;color:#4f6ea0;font-size:10px;font-weight:700;padding:8px 10px;text-align:center;border-bottom:2px solid #c7d9fb;">용법</th>
+            <th style="background:#eef3fe;color:#4f6ea0;font-size:10px;font-weight:700;padding:8px 10px;text-align:left;border-bottom:2px solid #c7d9fb;">용법설명</th>
           </tr>
         </thead>
         <tbody id="dvTableBody"></tbody>
@@ -4910,11 +4952,20 @@ async function loadDrugView() {
         } else if (ci === 1) {
           td.style.fontWeight = '600';
           td.textContent = v;
+        } else if (ci === 2) {
+          // 하루총용량 강조
+          td.style.cssText = 'padding:9px 10px;border-bottom:1px solid #f0f2f8;text-align:center;background:#fffbea;';
+          td.innerHTML = '<span style="font-size:15px;font-weight:800;color:#b45309;">'+v+'</span>';
         } else {
           td.textContent = v;
         }
         tr.appendChild(td);
       });
+      // 용법설명 칸
+      var tdDesc = document.createElement('td');
+      tdDesc.style.cssText = 'padding:9px 10px;border-bottom:1px solid #f0f2f8;color:#6b7280;font-size:11px;white-space:nowrap;';
+      tdDesc.textContent = getMethodDesc(d.method||'');
+      tr.appendChild(tdDesc);
       tbody.appendChild(tr);
     });
 
@@ -4953,15 +5004,18 @@ function buildDvCaptureDom() {
 
   var tbl = document.createElement('table');
   tbl.style.cssText = 'width:100%;border-collapse:collapse;font-size:13px;';
-  var cols    = ['약물코드','약물명','하루총용량','일투','일수','용법'];
-  var aligns  = ['left','left','center','center','center','center'];
-  var widths  = ['100px','auto','60px','50px','50px','60px'];
+  var cols    = ['약물코드','약물명','하루총용량','일투','일수','용법','용법설명'];
+  var aligns  = ['left','left','center','center','center','center','left'];
+  var widths  = ['100px','auto','60px','50px','50px','60px','80px'];
   var thead   = document.createElement('thead');
   var hrow    = document.createElement('tr');
   cols.forEach(function(col, ci) {
     var th = document.createElement('th');
     th.textContent = col;
-    th.style.cssText = 'background:#eef3fe;color:#4f6ea0;font-size:11px;font-weight:700;padding:10px 12px;text-align:'+aligns[ci]+';border-bottom:2px solid #c7d9fb;width:'+widths[ci]+';';
+    var isTotal = (col==='하루총용량');
+    th.style.cssText = (isTotal
+      ? 'background:#fff3cd;color:#b45309;font-size:11px;font-weight:700;padding:10px 12px;text-align:center;border-bottom:2px solid #f6cc52;width:'+widths[ci]+';'
+      : 'background:#eef3fe;color:#4f6ea0;font-size:11px;font-weight:700;padding:10px 12px;text-align:'+aligns[ci]+';border-bottom:2px solid #c7d9fb;width:'+widths[ci]+';');
     hrow.appendChild(th);
   });
   thead.appendChild(hrow);
@@ -4988,9 +5042,18 @@ function buildDvCaptureDom() {
           span.style.cssText = 'font-family:monospace;font-size:11px;background:#eef3fe;color:#4f8ef7;padding:2px 8px;border-radius:4px;border:1px solid #c7d9fb;';
           td.appendChild(span);
         } else if (ci === 1) { td.style.fontWeight='600'; td.textContent=v; }
+        else if (ci === 2) {
+          td.style.cssText = 'padding:11px 12px;border-bottom:1px solid #e8edf8;text-align:center;background:#fffbea;';
+          td.innerHTML = '<span style="font-size:15px;font-weight:800;color:#b45309;">'+v+'</span>';
+        }
         else { td.textContent=v; }
         tr.appendChild(td);
       });
+      // 용법설명
+      var tdDesc = document.createElement('td');
+      tdDesc.style.cssText = 'padding:11px 12px;border-bottom:1px solid #e8edf8;color:#6b7280;font-size:11px;white-space:nowrap;';
+      tdDesc.textContent = getMethodDesc(d.method||'');
+      tr.appendChild(tdDesc);
       tbody.appendChild(tr);
     });
   }
