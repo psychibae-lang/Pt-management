@@ -328,7 +328,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
     <button class="nav-tab" id="navDrug" onclick="switchTab('drug')">💊 약물입력</button>
     <button class="nav-tab" id="navSearch" onclick="switchTab('search');loadSearchTab()">🔍 접수조회</button>
     <button class="nav-tab" id="navClin" onclick="switchTab('clin');initClinTab()">🧠 임상가척도</button>
-    <button class="nav-tab" id="navNotice" onclick="switchTab('notice');bpInit()" style="color:#2d7d46;font-weight:700;">📢 공지사항</button>
+    <button class="nav-tab" id="navNotice" onclick="switchTab('notice');bpInit();bpRefreshNotices()" style="color:#2d7d46;font-weight:700;">📢 공지사항</button>
   </div>
   <div class="nav-tabs-row" id="grpJohoe">
     <button class="nav-tab" id="navProxy" onclick="switchTab('proxy')">📋 대리처방</button>
