@@ -5020,29 +5020,29 @@ function buildDvCaptureDom() {
   var wrap = document.createElement('div');
   wrap.style.cssText = [
     'position:fixed','top:-9999px','left:-9999px',
-    'background:#ffffff','padding:28px 40px','width:1100px',
+    'background:#ffffff','padding:20px 36px','width:1400px',
     'font-family:Apple SD Gothic Neo,Malgun Gothic,sans-serif',
     'box-sizing:border-box','z-index:-1'
   ].join(';');
 
   var hdr = document.createElement('div');
-  hdr.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:2px solid #c7d9fb;padding-bottom:14px;';
+  hdr.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;border-bottom:2px solid #c7d9fb;padding-bottom:10px;';
   hdr.innerHTML =
     '<div>'
-    + '<div style="font-size:12px;color:#888;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">한강의원 복용약물</div>'
-    + '<div style="font-size:26px;font-weight:900;color:#1a2a4a;">차트 <span style="color:#4f8ef7;">' + chart + '</span></div>'
+    + '<div style="font-size:11px;color:#888;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;">한강의원 복용약물</div>'
+    + '<div style="font-size:22px;font-weight:900;color:#1a2a4a;">차트 <span style="color:#4f8ef7;">' + chart + '</span></div>'
     + '</div>'
     + '<div style="text-align:right;">'
-    + '<div style="font-size:12px;color:#888;margin-bottom:4px;">저장날짜</div>'
-    + '<div style="font-size:18px;font-weight:800;color:#4f8ef7;">' + dateStr + '</div>'
+    + '<div style="font-size:11px;color:#888;margin-bottom:3px;">저장날짜</div>'
+    + '<div style="font-size:16px;font-weight:800;color:#4f8ef7;">' + dateStr + '</div>'
     + '</div>';
   wrap.appendChild(hdr);
 
   var tbl = document.createElement('table');
-  tbl.style.cssText = 'width:100%;border-collapse:collapse;font-size:14px;';
+  tbl.style.cssText = 'width:100%;border-collapse:collapse;font-size:13px;';
   var cols    = ['약물코드','약물명','이미지','하루총용량','일투','일수','용법','용법설명'];
   var aligns  = ['left','left','center','center','center','center','center','left'];
-  var widths  = ['120px','200px','100px','80px','60px','60px','70px','auto'];
+  var widths  = ['110px','180px','90px','75px','55px','55px','65px','auto'];
   var thead   = document.createElement('thead');
   var hrow    = document.createElement('tr');
   cols.forEach(function(col, ci) {
@@ -5071,7 +5071,7 @@ function buildDvCaptureDom() {
       var vals = [d.drug_code||'',d.drug_name||'',d.dose||'',d.daily_freq||'',d.days||'',d.method||''];
       vals.forEach(function(v, ci) {
         var td = document.createElement('td');
-        td.style.cssText = 'padding:11px 12px;border-bottom:1px solid #e8edf8;text-align:'+aligns[ci]+';color:#222;';
+        td.style.cssText = 'padding:6px 12px;border-bottom:1px solid #e8edf8;text-align:'+aligns[ci]+';color:#222;';
         if (ci === 0) {
           var span = document.createElement('span');
           span.textContent = v;
@@ -5082,14 +5082,14 @@ function buildDvCaptureDom() {
           tr.appendChild(td);
           // 이미지 칸 삽입
           var tdImg = document.createElement('td');
-          tdImg.style.cssText = 'padding:8px 12px;border-bottom:1px solid #e8edf8;text-align:center;vertical-align:middle;';
+          tdImg.style.cssText = 'padding:4px 12px;border-bottom:1px solid #e8edf8;text-align:center;vertical-align:middle;';
           var imgUrl = _dvDrugCodeMap[d.drug_code] || '';
           if (imgUrl) {
             var img = document.createElement('img');
             img.src = imgUrl;
             img.crossOrigin = 'anonymous';
             img.alt = d.drug_name || '';
-            img.style.cssText = 'width:80px;height:80px;object-fit:contain;border-radius:8px;border:1px solid #e0e4ef;background:#f7f8fc;display:block;margin:0 auto;';
+            img.style.cssText = 'width:64px;height:64px;object-fit:contain;border-radius:6px;border:1px solid #e0e4ef;background:#f7f8fc;display:block;margin:0 auto;';
             tdImg.appendChild(img);
           } else {
             tdImg.innerHTML = '<span style="font-size:16px;color:#e0e4ef;">—</span>';
@@ -5098,7 +5098,7 @@ function buildDvCaptureDom() {
           return;
         }
         else if (ci === 2) {
-          td.style.cssText = 'padding:11px 12px;border-bottom:1px solid #e8edf8;text-align:center;background:#fffbea;';
+          td.style.cssText = 'padding:6px 12px;border-bottom:1px solid #e8edf8;text-align:center;background:#fffbea;';
           td.innerHTML = '<span style="font-size:15px;font-weight:800;color:#b45309;">'+v+'</span>';
         }
         else { td.textContent=v; }
@@ -5106,7 +5106,7 @@ function buildDvCaptureDom() {
       });
       // 용법설명
       var tdDesc = document.createElement('td');
-      tdDesc.style.cssText = 'padding:11px 12px;border-bottom:1px solid #e8edf8;color:#6b7280;font-size:11px;white-space:nowrap;';
+      tdDesc.style.cssText = 'padding:6px 12px;border-bottom:1px solid #e8edf8;color:#6b7280;font-size:11px;white-space:nowrap;';
       tdDesc.textContent = getMethodDesc(d.method||'');
       tr.appendChild(tdDesc);
       tbody.appendChild(tr);
