@@ -25,27 +25,7 @@ header{background:#fff;border-bottom:1px solid var(--border);padding:10px 20px;d
 .nav-tab:hover{color:var(--text);}.nav-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
 .mob-nav{display:none;}
 .container{max-width:680px;margin:0 auto;padding:16px 12px;display:flex;flex-direction:column;gap:14px;}
-/* ── 탭 리사이즈 핸들 ── */
-#tabResizeHandle{
-  position:fixed;bottom:14px;right:14px;
-  width:34px;height:34px;
-  background:#fff;border:1.5px solid var(--border);border-radius:9px;
-  display:none;align-items:center;justify-content:center;
-  cursor:nwse-resize;z-index:500;
-  box-shadow:0 2px 12px rgba(0,0,0,0.13);
-  color:var(--text2);font-size:16px;
-  transition:all 0.15s;user-select:none;
-}
-#tabResizeHandle.visible{display:flex;}
-#tabResizeHandle:hover{border-color:var(--accent);color:var(--accent);background:#eef3fe;}
-#tabWidthBar{
-  position:fixed;bottom:56px;right:14px;
-  background:#fff;border:1.5px solid var(--border);border-radius:8px;
-  padding:5px 10px;font-size:11px;color:var(--text2);
-  z-index:500;display:none;white-space:nowrap;
-  box-shadow:0 2px 8px rgba(0,0,0,0.10);pointer-events:none;
-}
-#tabWidthBar.visible{display:block;}
+/* ── 탭 리사이즈 핸들 (구버전 제거됨) ── */
 .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,0.04);}
 .card-title{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
 .card-title::before{content:'';width:3px;height:12px;background:var(--accent);border-radius:2px;display:inline-block;}
@@ -4360,7 +4340,7 @@ async function confirmDelete() {
 
   <div id="dvResultCard" class="card hidden">
     <!-- 헤더: 차트번호 + 저장날짜 + 이미지/PDF 버튼 -->
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <span style="font-size:18px;font-weight:800;color:var(--text);">차트 <span id="dvChartLabel" style="color:var(--accent);"></span></span>
         <span id="dvDateBadge" style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1.5px solid #c7d9fb;border-radius:20px;padding:4px 10px;font-size:11px;color:var(--accent);font-weight:600;">
@@ -4371,20 +4351,6 @@ async function confirmDelete() {
         <button onclick="dvSaveImage()" class="btn btn-outline" style="font-size:12px;padding:7px 14px;border-color:#7c5cfc;color:#7c5cfc;">🖼️ 이미지 저장</button>
         <button onclick="dvSavePDF()" class="btn btn-success" style="font-size:12px;padding:7px 16px;">📄 PDF 저장</button>
       </div>
-    </div>
-
-    <!-- 화면 크기 조절 바 -->
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f7f8fc;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;flex-wrap:wrap;">
-      <span style="font-size:11px;color:var(--text2);font-weight:600;white-space:nowrap;">🔍 화면 크기</span>
-      <input type="range" id="dvZoomSlider" min="70" max="160" value="100" step="5"
-        style="flex:1;min-width:100px;max-width:200px;accent-color:var(--accent);cursor:pointer;"
-        oninput="applyDvZoom(this.value)">
-      <span id="dvZoomLabel" style="font-size:12px;font-weight:700;color:var(--accent);min-width:38px;">100%</span>
-      <button onclick="applyDvZoom(100);document.getElementById('dvZoomSlider').value=100;" style="font-size:11px;padding:3px 9px;border:1px solid var(--border);border-radius:5px;background:#fff;color:var(--text2);cursor:pointer;">초기화</button>
-      <span style="font-size:11px;color:var(--text2);border-left:1px solid var(--border);padding-left:10px;white-space:nowrap;">약물명/이미지 크기</span>
-      <button onclick="adjustDvSize(-1)" style="width:26px;height:26px;border:1px solid var(--border);border-radius:5px;background:#fff;cursor:pointer;font-size:14px;line-height:1;">−</button>
-      <span id="dvSizeLabel" style="font-size:11px;font-weight:700;color:var(--accent);min-width:30px;text-align:center;">보통</span>
-      <button onclick="adjustDvSize(1)" style="width:26px;height:26px;border:1px solid var(--border);border-radius:5px;background:#fff;cursor:pointer;font-size:14px;line-height:1;">＋</button>
     </div>
 
     <!-- 읽기전용 테이블 -->
@@ -4918,42 +4884,6 @@ var _dvChart = null;
 var _dvDate  = null;
 var _dvDrugCodeMap = {}; // drug_code → image_url 캐시
 
-// 화면 zoom
-function applyDvZoom(val) {
-  val = parseInt(val);
-  var card = document.getElementById('dvResultCard');
-  if (!card) return;
-  card.style.zoom = (val / 100);
-  document.getElementById('dvZoomLabel').textContent = val + '%';
-}
-
-// 약물명/이미지 크기 조절
-var _dvSizeStep = 0;
-var _dvSizeSteps = [
-  {name:9, img:36, label:'아주작게'},
-  {name:11, img:44, label:'작게'},
-  {name:13, img:56, label:'보통'},
-  {name:15, img:70, label:'크게'},
-  {name:17, img:88, label:'더크게'},
-  {name:20, img:108, label:'가장크게'}
-];
-function adjustDvSize(delta) {
-  var idx = Math.max(0, Math.min(_dvSizeSteps.length-1, _dvSizeStep + 2 + delta));
-  _dvSizeStep = idx - 2;
-  var s = _dvSizeSteps[idx];
-  document.querySelectorAll('#dvTableBody tr td.dv-name-td').forEach(function(td){
-    td.style.fontSize = s.name + 'px';
-  });
-  document.querySelectorAll('#dvTableBody tr td.dv-img-td img').forEach(function(img){
-    img.style.width = s.img + 'px';
-    img.style.height = s.img + 'px';
-  });
-  document.getElementById('dvSizeLabel').textContent = s.label;
-}
-function getDvCurrentSizes() {
-  return _dvSizeSteps[Math.max(0, Math.min(_dvSizeSteps.length-1, _dvSizeStep + 2))];
-}
-
 async function loadDrugView() {
   var chartNo = document.getElementById('dvChartNo').value.trim();
   if (!chartNo) { alert('차트번호를 입력하세요.'); return; }
@@ -5019,22 +4949,18 @@ async function loadDrugView() {
           span.style.cssText = 'font-family:monospace;font-size:11px;background:#eef3fe;color:#4f8ef7;padding:2px 7px;border-radius:4px;border:1px solid #c7d9fb;';
           td.appendChild(span);
         } else if (ci === 1) {
-          td.className = 'dv-name-td';
           td.style.fontWeight = '600';
-          td.style.fontSize = getDvCurrentSizes().name + 'px';
           td.textContent = v;
           // 약물명 다음에 이미지 칸 삽입
           tr.appendChild(td);
           var tdImg = document.createElement('td');
-          tdImg.className = 'dv-img-td';
           tdImg.style.cssText = 'padding:6px 10px;border-bottom:1px solid #f0f2f8;text-align:center;vertical-align:middle;';
           var imgUrl = _dvDrugCodeMap[d.drug_code] || '';
           if (imgUrl) {
             var img = document.createElement('img');
             img.src = imgUrl;
             img.alt = d.drug_name || '';
-            var sz = getDvCurrentSizes().img;
-            img.style.cssText = 'width:'+sz+'px;height:'+sz+'px;object-fit:contain;border-radius:6px;border:1px solid #e0e4ef;background:#f7f8fc;display:block;margin:0 auto;transition:width 0.15s,height 0.15s;';
+            img.style.cssText = 'width:52px;height:52px;object-fit:contain;border-radius:6px;border:1px solid #e0e4ef;background:#f7f8fc;display:block;margin:0 auto;';
             img.onerror = function(){ this.style.display='none'; };
             tdImg.appendChild(img);
           } else {
@@ -5181,36 +5107,24 @@ function buildDvCaptureDom() {
 async function dvSaveImage() {
   if (!_dvDrugs.length) { alert('약물 조회를 먼저 하세요.'); return; }
   if (typeof html2canvas === 'undefined') { alert('라이브러리 로딩 중, 잠시 후 다시 시도하세요.'); return; }
+  var wrap = buildDvCaptureDom();
   try {
     showToast('🖼️ 이미지 생성 중...');
-    // 화면에 보이는 결과카드를 그대로 캡처
-    var target = document.getElementById('dvResultCard');
-    // 잠시 zoom 없이 원본 스케일로 캡처하되 현재 크기 그대로 사용
-    var currentZoom = target.style.zoom || '1';
-    // zoom을 잠깐 제거해 정확한 pixel 렌더링 (scale 옵션으로 보정)
-    target.style.zoom = '1';
-    // 이미지 로딩 대기
-    var imgs = target.querySelectorAll('img');
+    // 이미지 로딩 완료 대기
+    var imgs = wrap.querySelectorAll('img');
     await Promise.all(Array.from(imgs).map(function(img){
       if (img.complete) return Promise.resolve();
       return new Promise(function(res){ img.onload=res; img.onerror=res; });
     }));
-    var zoomNum = parseFloat(currentZoom) || 1;
-    var canvas = await html2canvas(target, {
-      scale: Math.round(zoomNum * 2 * 10) / 10,  // zoom 반영한 해상도
-      backgroundColor: '#ffffff',
-      useCORS: true,
-      allowTaint: false,
-      logging: false
-    });
-    // zoom 복원
-    target.style.zoom = currentZoom;
+    var canvas = await html2canvas(wrap, { scale: 2, backgroundColor: '#ffffff', useCORS: true, allowTaint: false });
+    document.body.removeChild(wrap);
     var link = document.createElement('a');
     link.download = '약물_' + (_dvChart||'') + '_' + (document.getElementById('dvDateLabel').textContent||'').replace(/[()]/g,'') + '.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
     showToast('✅ 이미지 저장 완료!');
   } catch(e) {
+    if (wrap.parentNode) document.body.removeChild(wrap);
     alert('이미지 저장 오류: ' + e.message);
   }
 }
@@ -6313,169 +6227,137 @@ function bpEsc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&
 </script>
 
 <!-- ══ 탭 리사이즈 핸들 ══ -->
-<div id="tabResizeHandle" title="드래그: 폭/높이 조절 | 더블클릭: 초기화">⤡</div>
-<div id="tabWidthBar"></div>
-
+<!-- ══ 탭 영역 드래그 리사이즈 (jupsu 방식) ══ -->
+<style>
+.trh-e {
+  position: fixed; width: 6px; cursor: ew-resize;
+  background: transparent; pointer-events: all;
+  z-index: 9001; transition: background 0.15s; border-radius: 3px;
+}
+.trh-s {
+  position: fixed; height: 6px; cursor: ns-resize;
+  background: transparent; pointer-events: all;
+  z-index: 9001; transition: background 0.15s; border-radius: 3px;
+}
+.trh-se {
+  position: fixed; width: 14px; height: 14px; cursor: nwse-resize;
+  background: transparent; pointer-events: all;
+  z-index: 9002; border-radius: 3px;
+}
+.trh-e:hover, .trh-e.active { background: rgba(79,142,247,0.35); }
+.trh-s:hover, .trh-s.active { background: rgba(79,142,247,0.35); }
+.trh-se:hover, .trh-se.active { background: rgba(79,142,247,0.5); border-radius: 0 0 4px 0; }
+body.trh-resizing { user-select: none; }
+</style>
 <script>
 (function(){
-  var RESIZABLE_TABS=['appt','patient','drug','search','clin','proxy','selcare','sms','phone','stats','drugview','links','notice','messenger'];
-  var MESSENGER_TABS=['messenger'];
+  var STORE_KEY = 'tabResize_mgmt_v1';
+  var TABS = ['links','patient','appt','drug','search','clin','proxy','selcare','sms','phone','stats','drugview','notice','messenger'];
+  var NO_WIDTH = ['messenger','search']; // 전체폭 탭은 가로 핸들 숨김
 
-  var _tabSizes={};
-  try{_tabSizes=JSON.parse(localStorage.getItem('tabSizes')||'{}');}catch(e){}
+  function loadSizes(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); }catch(e){return {};} }
+  function saveSizes(s){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(s)); }catch(e){} }
 
-  var handle=document.getElementById('tabResizeHandle');
-  var widthBar=document.getElementById('tabWidthBar');
-  var _activeTab=null,_dragging=false;
-  var _startX,_startY,_startW,_startH,_el;
+  var _curTab = null;
 
-  function getTabEl(tab){
-    var T=tab.charAt(0).toUpperCase()+tab.slice(1);
+  var hE  = document.createElement('div'); hE.className  = 'trh-e';
+  var hS  = document.createElement('div'); hS.className  = 'trh-s';
+  var hSE = document.createElement('div'); hSE.className = 'trh-se';
+  document.body.appendChild(hE);
+  document.body.appendChild(hS);
+  document.body.appendChild(hSE);
+
+  function getActiveEl(){
+    if(!_curTab) return null;
+    var T = _curTab.charAt(0).toUpperCase() + _curTab.slice(1);
     return document.getElementById('tab'+T);
   }
 
-  function applySize(tab){
-    var el=getTabEl(tab);if(!el)return;
-    var sz=_tabSizes[tab];if(!sz)return;
-    if(MESSENGER_TABS.indexOf(tab)>=0){
-      el.style.height=sz.h+'px';
-    } else {
-      var maxVw=window.innerWidth-28;
-      var w=Math.min(sz.w,maxVw);
-      el.style.maxWidth=w+'px';
-      el.style.width=w+'px';
-      if(sz.h)el.style.minHeight=sz.h+'px';
+  function positionHandles(){
+    var el = getActiveEl();
+    if(!el || el.classList.contains('hidden')){ hideHandles(); return; }
+    var noW = NO_WIDTH.indexOf(_curTab) >= 0;
+    var rect = el.getBoundingClientRect();
+    hE.style.top    = Math.max(rect.top, 60) + 'px';
+    hE.style.left   = (rect.right - 3) + 'px';
+    hE.style.height = (rect.height - 10) + 'px';
+    hE.style.display = noW ? 'none' : 'block';
+    hS.style.top    = (rect.bottom - 3) + 'px';
+    hS.style.left   = rect.left + 'px';
+    hS.style.width  = (rect.width - 10) + 'px';
+    hS.style.display = 'block';
+    hSE.style.top   = (rect.bottom - 7) + 'px';
+    hSE.style.left  = (rect.right - 7) + 'px';
+    hSE.style.display = noW ? 'none' : 'block';
+  }
+  function hideHandles(){
+    hE.style.display = hS.style.display = hSE.style.display = 'none';
+  }
+
+  var _drag = null;
+  function startDrag(e, type){
+    var el = getActiveEl(); if(!el) return;
+    e.preventDefault();
+    var rect = el.getBoundingClientRect();
+    _drag = { type:type, startX:e.clientX, startY:e.clientY,
+               startW:rect.width, startH:rect.height, el:el, tabId:_curTab };
+    document.body.classList.add('trh-resizing');
+    hE.classList.add('active'); hS.classList.add('active'); hSE.classList.add('active');
+  }
+  hE.addEventListener('mousedown',  function(e){ startDrag(e,'e'); });
+  hS.addEventListener('mousedown',  function(e){ startDrag(e,'s'); });
+  hSE.addEventListener('mousedown', function(e){ startDrag(e,'se'); });
+
+  document.addEventListener('mousemove', function(e){
+    if(!_drag) return;
+    var dx = e.clientX - _drag.startX, dy = e.clientY - _drag.startY, el = _drag.el;
+    if(_drag.type==='e'||_drag.type==='se'){
+      var nw = Math.max(320, Math.min(_drag.startW + dx, window.innerWidth - 24));
+      el.style.maxWidth = nw+'px'; el.style.width = nw+'px';
     }
-  }
-
-  function updateBar(tab){
-    var el=getTabEl(tab);if(!el)return;
-    widthBar.textContent='폭 '+el.offsetWidth+'px · 높이 '+el.offsetHeight+'px';
-  }
-
-  function showHandle(tab){
-    _activeTab=tab;
-    handle.classList.add('visible');
-    applySize(tab);
-    updateBar(tab);
-  }
-
-  function hideHandle(){
-    handle.classList.remove('visible');
-    widthBar.classList.remove('visible');
-    _activeTab=null;
-  }
+    if(_drag.type==='s'||_drag.type==='se'){
+      var nh = Math.max(200, _drag.startH + dy);
+      el.style.minHeight = nh+'px'; el.style.height = nh+'px';
+    }
+    positionHandles();
+  });
+  document.addEventListener('mouseup', function(){
+    if(!_drag) return;
+    var sizes = loadSizes();
+    sizes[_drag.tabId] = { w:_drag.el.style.width, h:_drag.el.style.minHeight };
+    saveSizes(sizes);
+    _drag = null;
+    document.body.classList.remove('trh-resizing');
+    hE.classList.remove('active'); hS.classList.remove('active'); hSE.classList.remove('active');
+    positionHandles();
+  });
 
   // switchTab 후킹
-  window.addEventListener('DOMContentLoaded',function(){
-    var orig=window.switchTab;
-    window.switchTab=function(tab){
-      if(orig)orig(tab);
-      if(RESIZABLE_TABS.indexOf(tab)>=0){
-        setTimeout(function(){showHandle(tab);},60);
-      } else {
-        hideHandle();
-      }
-    };
-    // 페이지 로드 시 현재 활성 탭 감지
-    RESIZABLE_TABS.forEach(function(tab){
-      var el=getTabEl(tab);
-      if(el&&!el.classList.contains('hidden')){
-        setTimeout(function(){showHandle(tab);},150);
-      }
+  var _orig = window.switchTab;
+  window.switchTab = function(tab){
+    _curTab = tab;
+    if(_orig) _orig.apply(this, arguments);
+    var sizes = loadSizes();
+    var T = tab.charAt(0).toUpperCase() + tab.slice(1);
+    var el = document.getElementById('tab'+T);
+    if(el && sizes[tab]){
+      if(sizes[tab].w){ el.style.maxWidth = sizes[tab].w; el.style.width = sizes[tab].w; }
+      if(sizes[tab].h){ el.style.minHeight = sizes[tab].h; el.style.height = sizes[tab].h; }
+    }
+    setTimeout(positionHandles, 30);
+  };
+
+  window.addEventListener('scroll', positionHandles, {passive:true});
+  window.addEventListener('resize', positionHandles, {passive:true});
+
+  window.addEventListener('DOMContentLoaded', function(){
+    TABS.forEach(function(t){
+      var T = t.charAt(0).toUpperCase()+t.slice(1);
+      var el = document.getElementById('tab'+T);
+      if(el && !el.classList.contains('hidden')){ _curTab = t; }
     });
+    positionHandles();
   });
-
-  // 더블클릭: 초기화
-  handle.addEventListener('dblclick',function(){
-    if(!_activeTab)return;
-    delete _tabSizes[_activeTab];
-    try{localStorage.setItem('tabSizes',JSON.stringify(_tabSizes));}catch(e){}
-    var el=getTabEl(_activeTab);
-    if(el){
-      if(MESSENGER_TABS.indexOf(_activeTab)>=0){
-        el.style.height='calc(100vh - 120px)';
-      } else {
-        el.style.maxWidth='';el.style.width='';el.style.minHeight='';
-      }
-    }
-    widthBar.classList.remove('visible');
-  });
-
-  // 마우스 드래그
-  handle.addEventListener('mousedown',function(e){
-    e.preventDefault();
-    if(!_activeTab)return;
-    _el=getTabEl(_activeTab);if(!_el)return;
-    _dragging=true;
-    _startX=e.clientX;_startY=e.clientY;
-    _startW=_el.offsetWidth;_startH=_el.offsetHeight;
-    widthBar.classList.add('visible');
-    document.addEventListener('mousemove',onDrag);
-    document.addEventListener('mouseup',stopDrag);
-  });
-
-  // 터치 드래그
-  handle.addEventListener('touchstart',function(e){
-    e.preventDefault();
-    if(!_activeTab)return;
-    _el=getTabEl(_activeTab);if(!_el)return;
-    var t=e.touches[0];
-    _dragging=true;
-    _startX=t.clientX;_startY=t.clientY;
-    _startW=_el.offsetWidth;_startH=_el.offsetHeight;
-    widthBar.classList.add('visible');
-    document.addEventListener('touchmove',onDragTouch,{passive:false});
-    document.addEventListener('touchend',stopDragTouch);
-  },{passive:false});
-
-  function applyNewSize(newW,newH){
-    if(MESSENGER_TABS.indexOf(_activeTab)>=0){
-      _el.style.height=Math.max(200,newH)+'px';
-    } else {
-      var maxVw=window.innerWidth-28;
-      newW=Math.min(Math.max(320,newW),maxVw);
-      newH=Math.max(200,newH);
-      _el.style.maxWidth=newW+'px';
-      _el.style.width=newW+'px';
-      _el.style.minHeight=newH+'px';
-    }
-    widthBar.textContent='폭 '+_el.offsetWidth+'px · 높이 '+_el.offsetHeight+'px';
-  }
-
-  function onDrag(e){
-    if(!_dragging||!_el)return;
-    var dx=e.clientX-_startX,dy=e.clientY-_startY;
-    applyNewSize(_startW+dx*2,_startH+dy);
-  }
-  function onDragTouch(e){
-    if(!_dragging||!_el)return;
-    e.preventDefault();
-    var t=e.touches[0];
-    var dx=t.clientX-_startX,dy=t.clientY-_startY;
-    applyNewSize(_startW+dx*2,_startH+dy);
-  }
-
-  function saveSize(){
-    if(!_el||!_activeTab)return;
-    _tabSizes[_activeTab]={w:_el.offsetWidth,h:_el.offsetHeight};
-    try{localStorage.setItem('tabSizes',JSON.stringify(_tabSizes));}catch(e){}
-  }
-
-  function stopDrag(){
-    _dragging=false;
-    document.removeEventListener('mousemove',onDrag);
-    document.removeEventListener('mouseup',stopDrag);
-    saveSize();
-    setTimeout(function(){widthBar.classList.remove('visible');},1500);
-  }
-  function stopDragTouch(){
-    _dragging=false;
-    document.removeEventListener('touchmove',onDragTouch);
-    document.removeEventListener('touchend',stopDragTouch);
-    saveSize();
-    setTimeout(function(){widthBar.classList.remove('visible');},1500);
-  }
 })();
 </script>
 
