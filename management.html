@@ -3929,15 +3929,20 @@ async function doSearch() {
     const badge = isCj
       ? `<span style="background:#dbeafe;color:#1d4ed8;font-size:12px;padding:2px 8px;border-radius:10px;font-weight:700;">초진</span>`
       : `<span style="background:#d1fae5;color:#065f46;font-size:12px;padding:2px 8px;border-radius:10px;font-weight:700;">대리</span>`;
-    return `<div onclick="openDetail('${row.id}','${row._table}')"
-      style="background:white;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color 0.15s;"
+    const onestopId = `onestop_${row.id}`;
+    return `<div style="background:white;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;margin-bottom:8px;transition:border-color 0.15s;"
       onmouseover="this.style.borderColor='#1a3a5c'" onmouseout="this.style.borderColor='#e5e7eb'">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-        ${badge}
-        <span style="font-size:15px;font-weight:700;">${nm}</span>
-        <span style="color:#9ca3af;font-size:13px;font-weight:700;margin-left:4px;">차트 ${ch}</span>
+        <div onclick="openDetail('${row.id}','${row._table}')" style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;min-width:0;">
+          ${badge}
+          <span style="font-size:15px;font-weight:700;">${nm}</span>
+          <span style="color:#9ca3af;font-size:13px;font-weight:700;margin-left:4px;white-space:nowrap;">차트 ${ch}</span>
+        </div>
+        ${isCj ? `<button id="${onestopId}" onclick="event.stopPropagation();oneStopSave('${row.id}','${onestopId}')"
+          style="background:linear-gradient(135deg,#2563eb 0%,#16a34a 100%);color:#fff;border:none;border-radius:8px;padding:6px 13px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgba(37,99,235,0.25);flex-shrink:0;">
+          💾+📄 저장</button>` : ''}
       </div>
-      <div style="font-size:12px;color:#9ca3af;">${dt}</div>
+      <div onclick="openDetail('${row.id}','${row._table}')" style="font-size:12px;color:#9ca3af;cursor:pointer;">${dt}</div>
     </div>`;
   }).join('');
 }
@@ -4272,6 +4277,92 @@ async function saveChartFromModal() {
     btn.textContent = origText; btn.disabled = false;
   }
 }
+
+
+// ── 원스톱: 챠트저장 + PDF 동시 실행 ──
+async function oneStopSave(id, btnId) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  const origHTML = btn.innerHTML;
+  btn.innerHTML = '⏳ 처리중...'; btn.disabled = true;
+
+  let row;
+  try {
+    const r = await fetch(SUPA_URL + '/rest/v1/chojin?id=eq.' + id, {
+      headers: { 'apikey': SUPA_ANON, 'Authorization': 'Bearer ' + SUPA_ANON }
+    });
+    const rows = await r.json();
+    if (!rows || !rows.length) { showToast('⚠️ 데이터 없음'); btn.innerHTML = origHTML; btn.disabled = false; return; }
+    row = rows[0];
+  } catch(e) { showToast('❌ 데이터 로드 실패'); btn.innerHTML = origHTML; btn.disabled = false; return; }
+
+  // ① 챠트저장
+  try {
+    const chartNo = String(row.chart || '').trim();
+    if (chartNo) {
+      const today = today6();
+      const visitData = { chart_no: chartNo, visit_date: today, updated_at: new Date().toISOString() };
+      const ept = await sbGet('patients', { chart_no: 'eq.' + chartNo, select: 'chart_no', limit: '1' });
+      if (!ept || ept.length === 0) {
+        await sbInsert('patients', { chart_no: chartNo, phone: (row.phone || '').replace(/[-\s]/g, ''), updated_at: new Date().toISOString() });
+      }
+      const ev = await sbGet('visits', { chart_no: 'eq.' + chartNo, select: 'id', limit: '1' });
+      if (ev && ev.length > 0) { await sbUpdate('visits', { chart_no: chartNo }, visitData); }
+      else { await sbInsert('visits', visitData); }
+    }
+  } catch(e) { console.warn('챠트저장 오류:', e.message); }
+
+  // ② PDF 새창 + 자동 인쇄
+  try {
+    const name = row.name || '';
+    const dt = new Date(row.created_at).toLocaleString('ko-KR');
+    const dateObj = new Date(row.created_at);
+    const chart = (row.chart || '').trim();
+    const yy = String(dateObj.getFullYear()).slice(2);
+    const mm = String(dateObj.getMonth()+1).padStart(2,'0');
+    const dd = String(dateObj.getDate()).padStart(2,'0');
+    const pdfFilename = chart + '신환동의서' + yy + mm + dd;
+    const idStr = (row.id1 || '') + ' - ' + (row.id2 || '');
+    const agreeFields = [[6,'개인정보 동의'],[7,'진단서 발급 동의'],[8,'본인확인 불가 동의'],[9,'서류환불 불가 동의'],[10,'상담료·검사비 동의'],[11,'CCTV 확인']];
+    let agreeRows = '';
+    agreeFields.forEach(function(pair) {
+      const n = pair[0], lbl = pair[1];
+      const val = row['agree' + n] || row['agree_' + n];
+      agreeRows += '<tr><td>' + lbl + '(' + n + ')</td><td>' + (val ? '✓' : '') + '</td></tr>';
+    });
+    const sigHtml = row.signature_url ? '<tr><td>서명</td><td><img src="' + row.signature_url + '" style="height:60px;"/></td></tr>' : '';
+    const tdS = 'padding:7px 6px;border-bottom:1px solid #eee;';
+    const bodyHtml =
+      '<table style="width:100%;border-collapse:collapse;font-size:13px;">' +
+      '<tr><td style="' + tdS + 'color:#666;width:140px;">접수일시</td><td style="' + tdS + '">' + dt + '</td></tr>' +
+      '<tr><td style="' + tdS + 'color:#666;">차트번호</td><td style="' + tdS + '">' + chart + '</td></tr>' +
+      '<tr><td style="' + tdS + 'color:#666;">성명</td><td style="' + tdS + '">' + name + '</td></tr>' +
+      '<tr><td style="' + tdS + 'color:#666;">주민번호</td><td style="' + tdS + '">' + idStr + '</td></tr>' +
+      '<tr><td style="' + tdS + 'color:#666;">전화번호</td><td style="' + tdS + '">' + (row.phone || '') + '</td></tr>' +
+      '<tr><td style="' + tdS + 'color:#666;">주소</td><td style="' + tdS + '">' + (row.address || '') + '</td></tr>' +
+      agreeRows + sigHtml + '</table>';
+    const w = window.open('', '_blank');
+    if (w) {
+      w.document.write('<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>' + pdfFilename + '</title>' +
+        '<style>body{font-family:\'Noto Sans KR\',sans-serif;padding:20px;font-size:13px}' +
+        'table{width:100%;border-collapse:collapse}td{padding:7px 6px;border-bottom:1px solid #eee}' +
+        '@media print{.no-print{display:none!important}}</style>' +
+        '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap">' +
+        '</head><body>' +
+        '<h3 style="margin-bottom:14px;">초진 접수 — ' + name + ' (' + dt + ')</h3>' +
+        bodyHtml +
+        '<br><button class="no-print" onclick="window.print()" style="padding:10px 24px;background:#1a3a5c;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;">🖨️ 인쇄 / PDF 저장</button>' +
+        '<scr' + 'ipt>setTimeout(function(){window.print();},600);</scr' + 'ipt>' +
+        '</body></html>');
+      w.document.close();
+    } else { showToast('⚠️ 팝업 차단 해제 후 다시 시도하세요.'); }
+  } catch(e) { console.warn('PDF 오류:', e.message); }
+
+  btn.innerHTML = '✅ 완료!';
+  showToast('✅ 챠트저장 + PDF 완료!');
+  setTimeout(function() { btn.innerHTML = origHTML; btn.disabled = false; }, 3000);
+}
+
 
 function closeEditModal() { document.getElementById('edit-modal').style.display = 'none'; }
 
