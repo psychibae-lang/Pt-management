@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>사랑소아 메신저</title>
+<title>한강의원 메신저</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#eef0f5;display:flex;align-items:flex-start;min-height:100vh;}
@@ -247,19 +247,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="admin-section-title">접수2 계정</div>
         <div class="admin-row"><label>표시 이름</label><input id="adm-label2" type="text" placeholder="예: 접수2"/></div>
         <div class="admin-row"><label>비밀번호</label><input id="adm-pw2" type="text" placeholder="새 비밀번호"/></div>
-        <div class="admin-row"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="adm-hidden2" style="width:auto;"/> 대화화면에서 가리기</label></div>
       </div>
       <div class="admin-section">
         <div class="admin-section-title">guest1 계정</div>
         <div class="admin-row"><label>표시 이름</label><input id="adm-label-g1" type="text" placeholder="예: guest1"/></div>
         <div class="admin-row"><label>비밀번호</label><input id="adm-pw-g1" type="text" placeholder="새 비밀번호"/></div>
-        <div class="admin-row"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="adm-hidden-g1" style="width:auto;"/> 대화화면에서 가리기</label></div>
       </div>
       <div class="admin-section">
         <div class="admin-section-title">guest2 계정</div>
         <div class="admin-row"><label>표시 이름</label><input id="adm-label-g2" type="text" placeholder="예: guest2"/></div>
         <div class="admin-row"><label>비밀번호</label><input id="adm-pw-g2" type="text" placeholder="새 비밀번호"/></div>
-        <div class="admin-row"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="adm-hidden-g2" style="width:auto;"/> 대화화면에서 가리기</label></div>
       </div>
       <!-- 추가 계정 목록 -->
       <div id="extra-accounts-wrap"></div>
@@ -397,14 +394,14 @@ const DEFAULT_FB_CONFIG={
   storageBucket:"temp-share-image-hanriver.firebasestorage.app",
   clinicName:"사랑소아"
 };
+// ⚠️ 이 파일(messenger_p.html)은 ped DB로 고정되어 있습니다.
+// 관리자 화면에서 Database URL/Storage Bucket을 바꿔도 저장되지 않으며,
+// 새로고침하면 항상 위 DEFAULT_FB_CONFIG 값으로 복원됩니다.
 function loadFBConfig(){
-  try{
-    const s=localStorage.getItem('fb_config');
-    return s?{...DEFAULT_FB_CONFIG,...JSON.parse(s)}:{...DEFAULT_FB_CONFIG};
-  }catch(e){return {...DEFAULT_FB_CONFIG};}
+  return {...DEFAULT_FB_CONFIG};
 }
 function saveFBConfig(cfg){
-  localStorage.setItem('fb_config',JSON.stringify(cfg));
+  // 고정 파일: DB 연결 정보 저장을 막음
 }
 const FB_CFG=loadFBConfig();
 
@@ -428,11 +425,11 @@ const db=firebase.database();
 const storage=firebase.storage();
 
 const DEFAULT_ACCOUNTS=[
-  {id:'wonjang',label:'원장',   pw:'ped1234',        c:'c0'},
-  {id:'jesu1',  label:'접수1',  pw:'love0505',       c:'c2'},
-  {id:'jesu2',  label:'영유아', pw:'love0505',       c:'c3', hidden:false},
-  {id:'guest1', label:'guest1', pw:'guest1234',      c:'c1', hidden:false},
-  {id:'guest2', label:'guest2', pw:'guest2345',      c:'c4', hidden:false},
+  {id:'wonjang',label:'원장',   pw:'han1234',    c:'c0'},
+  {id:'jesu1',  label:'접수1',  pw:'js10000',    c:'c2'},
+  {id:'jesu2',  label:'접수2',  pw:'js20000',    c:'c3'},
+  {id:'guest1', label:'guest1', pw:'guest1',     c:'c1'},
+  {id:'guest2', label:'guest2', pw:'guest2',     c:'c4'},
 ];
 let ACCOUNTS=[...DEFAULT_ACCOUNTS];
 
@@ -445,9 +442,9 @@ async function loadAccountsFromDB(){
       const base=DEFAULT_ACCOUNTS.map(a=>{
         if(a.id==='wonjang'&&d.wonjang) return {...a, label:d.wonjang.label||a.label, pw:d.wonjang.pw||a.pw};
         if(a.id==='jesu1'&&d.jesu1) return {...a, label:d.jesu1.label||a.label, pw:d.jesu1.pw||a.pw};
-        if(a.id==='jesu2'&&d.jesu2) return {...a, label:d.jesu2.label||a.label, pw:d.jesu2.pw||a.pw, hidden:!!d.jesu2.hidden};
-        if(a.id==='guest1'&&d.guest1) return {...a, label:d.guest1.label||a.label, pw:d.guest1.pw||a.pw, hidden:!!d.guest1.hidden};
-        if(a.id==='guest2'&&d.guest2) return {...a, label:d.guest2.label||a.label, pw:d.guest2.pw||a.pw, hidden:!!d.guest2.hidden};
+        if(a.id==='jesu2'&&d.jesu2) return {...a, label:d.jesu2.label||a.label, pw:d.jesu2.pw||a.pw};
+        if(a.id==='guest1'&&d.guest1) return {...a, label:d.guest1.label||a.label, pw:d.guest1.pw||a.pw};
+        if(a.id==='guest2'&&d.guest2) return {...a, label:d.guest2.label||a.label, pw:d.guest2.pw||a.pw};
         return a;
       });
       // 추가 계정 로드
@@ -498,9 +495,6 @@ function openAdmin(){
   document.getElementById('adm-pw-g1').value=g1?.pw||'';
   document.getElementById('adm-label-g2').value=g2?.label||'';
   document.getElementById('adm-pw-g2').value=g2?.pw||'';
-  document.getElementById('adm-hidden2').checked=!!(j2?.hidden);
-  document.getElementById('adm-hidden-g1').checked=!!(g1?.hidden);
-  document.getElementById('adm-hidden-g2').checked=!!(g2?.hidden);
   // 추가 계정 로드
   extraRows=ACCOUNTS.filter(a=>a.extra).map(a=>({id:a.id,label:a.label,pw:a.pw}));
   renderExtraAccountRows();
@@ -521,9 +515,6 @@ async function saveAdmin(){
   const pG1=(document.getElementById('adm-pw-g1').value||'').trim();
   const lG2=(document.getElementById('adm-label-g2').value||'').trim();
   const pG2=(document.getElementById('adm-pw-g2').value||'').trim();
-  const hidden2=document.getElementById('adm-hidden2').checked;
-  const hiddenG1=document.getElementById('adm-hidden-g1').checked;
-  const hiddenG2=document.getElementById('adm-hidden-g2').checked;
   if(!pWj||!l1||!p1||!l2||!p2||!lG1||!pG1||!lG2||!pG2){
     document.getElementById('adm-msg').style.color='#e53e3e';
     document.getElementById('adm-msg').textContent='모든 항목을 입력해주세요.';
@@ -559,9 +550,9 @@ async function saveAdmin(){
     await db.ref('admin/accounts').set({
       wonjang:{pw:pWj},
       jesu1:{label:l1, pw:p1},
-      jesu2:{label:l2, pw:p2, hidden:hidden2},
-      guest1:{label:lG1, pw:pG1, hidden:hiddenG1},
-      guest2:{label:lG2, pw:pG2, hidden:hiddenG2},
+      jesu2:{label:l2, pw:p2},
+      guest1:{label:lG1, pw:pG1},
+      guest2:{label:lG2, pw:pG2},
       extras:extrasObj,
     });
     // 로컬 반영
@@ -569,9 +560,9 @@ async function saveAdmin(){
     const baseAccounts=DEFAULT_ACCOUNTS.map(a=>{
       if(a.id==='wonjang') return {...a,pw:pWj};
       if(a.id==='jesu1') return {...a,label:l1,pw:p1};
-      if(a.id==='jesu2') return {...a,label:l2,pw:p2,hidden:hidden2};
-      if(a.id==='guest1') return {...a,label:lG1,pw:pG1,hidden:hiddenG1};
-      if(a.id==='guest2') return {...a,label:lG2,pw:pG2,hidden:hiddenG2};
+      if(a.id==='jesu2') return {...a,label:l2,pw:p2};
+      if(a.id==='guest1') return {...a,label:lG1,pw:pG1};
+      if(a.id==='guest2') return {...a,label:lG2,pw:pG2};
       return a;
     });
     const extraAccounts=collectedExtras.map((e,i)=>({id:e.id,label:e.label,pw:e.pw,c:BASE_COLORS[i%BASE_COLORS.length],extra:true}));
@@ -879,7 +870,7 @@ async function startCall(withVideo=false){
 // 수신 감지 시작
 function startCallListener(){
   if(callListenerRef) callListenerRef.off();
-  // guest1, guest2만 원장에서 오는 통화만 감지, 나머지는 전체
+  // guest만 원장에서 오는 통화만 감지, 나머지는 전체
   const others=(me==='guest1'||me==='guest2')
     ? [ACCOUNTS.find(a=>a.id==='wonjang')].filter(Boolean)
     : ACCOUNTS.filter(a=>a.id!==me);
@@ -1250,7 +1241,7 @@ function doLogin(){
       initUnreadThenRender();
     }).catch(()=>initUnreadThenRender());
   } else {
-    // 원장·접수1·접수2·extra계정·대기모드 → 대화상대 선택 화면
+    // 원장·접수1·접수2·대기모드 → 대화상대 선택 화면
     peer=null;
     initUnreadThenRender();
   }
@@ -1459,20 +1450,10 @@ function canManage(id){return isAdmin(id);}
 
 function renderApp(){
   const myA=acct(me);
-  const myAcct=acct(me);
-  // guest(guest1, guest2)는 원장과만 연결
-  // extra 계정은 모든 사용자와 대화 가능
-  // 원장·접수1·접수2는 전체 목록 (hidden 계정 제외)
-  let others;
-  if(me==='guest1'||me==='guest2'){
-    others=[ACCOUNTS.find(a=>a.id==='wonjang')].filter(Boolean);
-  } else if(myAcct?.extra){
-    // extra 계정: 모든 계정과 대화 가능 (hidden 계정도 포함, 자신 제외)
-    others=ACCOUNTS.filter(a=>a.id!==me);
-  } else {
-    // 원장·접수1·접수2: hidden 체크된 계정 숨기기
-    others=ACCOUNTS.filter(a=>a.id!==me && !a.hidden);
-  }
+  // 원장·접수 전체 목록, guest만 원장으로 제한
+  const others=(me==='guest1'||me==='guest2')
+    ? [ACCOUNTS.find(a=>a.id==='wonjang')].filter(Boolean)
+    : ACCOUNTS.filter(a=>a.id!==me);
   const sideHtml=others.map(u=>`
     <div class="uitem${peer===u.id?' active':''}" onclick="selectPeer('${u.id}')">
       <div class="av-wrap">
@@ -1594,11 +1575,13 @@ function renderMsgs(msgs){
 
 function selectPeer(uid){stopChat();peer=uid;unread[uid]=0;setLR(uid);renderApp();}
 function sanitizePeer(){
-  // guest1, guest2만 원장과 자동 연결
+  // guest만 원장과 자동 연결, 나머지는 peer 그대로
   if(me==='guest1'||me==='guest2'){
     peer='wonjang';
   }
-  // extra 계정은 peer 그대로 유지 (모든 사용자와 대화 가능)
+  // extra 계정도 guest처럼 원장과 자동 연결
+  const myAcct=acct(me);
+  if(myAcct?.extra) peer='wonjang';
 }
 
 function sendMsg(){
@@ -1607,10 +1590,9 @@ function sendMsg(){
   const text=inp.value.trim(); if(!text) return;
   inp.value='';
   db.ref('msgs/'+mkey(me,peer)).push({from:me,text,ts:Date.now()});
-  // 모든 계정이 메시지 전송 후 대기(peer=null) 상태로 전환
-  // (guest1, guest2도 포함 - 단, guest는 원장과만 대화하므로 대기모드 의미가 없어 유지)
-  const isGuest=(me==='guest1'||me==='guest2');
-  if(!isGuest){
+  // 원장·접수1·접수2는 메시지 전송 후 자동으로 대기(peer=null) 상태로 전환
+  const isStaff=(me==='wonjang'||me==='jesu1'||me==='jesu2');
+  if(isStaff){
     setTimeout(()=>{stopChat();peer=null;renderApp();},300);
   } else {
     inp.focus();
@@ -1645,24 +1627,22 @@ function openFBTab(){
   document.getElementById('adm-clinic-name').value=cfg.clinicName||'';
   document.getElementById('adm-fb-url').value=cfg.databaseURL||'';
   document.getElementById('adm-fb-bucket').value=cfg.storageBucket||'';
+  document.getElementById('adm-fb-url').disabled=true;
+  document.getElementById('adm-fb-bucket').disabled=true;
   document.getElementById('fb-current-name').textContent=cfg.clinicName||'—';
   document.getElementById('fb-current-url').textContent=cfg.databaseURL||'—';
   document.getElementById('fb-current-bucket').textContent=cfg.storageBucket||'—';
-  document.getElementById('adm-fb-msg').textContent='';
+  document.getElementById('adm-fb-msg').style.color='#888';
+  document.getElementById('adm-fb-msg').textContent='🔒 이 파일은 ped DB로 고정되어 있습니다 (변경 불가).';
 }
 function saveFBSettings(){
   const name=(document.getElementById('adm-clinic-name').value||'').trim();
-  const url=(document.getElementById('adm-fb-url').value||'').trim();
-  const bucket=(document.getElementById('adm-fb-bucket').value||'').trim();
-  if(!name||!url||!bucket){
+  if(!name){
     const m=document.getElementById('adm-fb-msg');
-    m.style.color='#e53e3e'; m.textContent='모든 항목을 입력해주세요.'; return;
+    m.style.color='#e53e3e'; m.textContent='병원/그룹 이름을 입력해주세요.'; return;
   }
-  if(!url.startsWith('https://')||!url.includes('firebaseio')){
-    const m=document.getElementById('adm-fb-msg');
-    m.style.color='#e53e3e'; m.textContent='올바른 Database URL 형식이 아닙니다.'; return;
-  }
-  saveFBConfig({clinicName:name, databaseURL:url, storageBucket:bucket});
+  // ⚠️ 이 파일은 ped DB로 고정: URL/Bucket은 입력값을 무시하고 항상 기본값 사용
+  saveFBConfig({clinicName:name, databaseURL:DEFAULT_FB_CONFIG.databaseURL, storageBucket:DEFAULT_FB_CONFIG.storageBucket});
   // 로컬 로그인 정보 초기화 (다른 그룹이면 계정이 다를 수 있음)
   localStorage.removeItem('hangang_me');
   const m=document.getElementById('adm-fb-msg');
@@ -1687,9 +1667,9 @@ function resetFBSettings(){
     const base=DEFAULT_ACCOUNTS.map(a=>{
       if(a.id==='wonjang'&&d.wonjang) return {...a, pw:d.wonjang.pw||a.pw};
       if(a.id==='jesu1'&&d.jesu1) return {...a, label:d.jesu1.label||a.label, pw:d.jesu1.pw||a.pw};
-      if(a.id==='jesu2'&&d.jesu2) return {...a, label:d.jesu2.label||a.label, pw:d.jesu2.pw||a.pw, hidden:!!d.jesu2.hidden};
-      if(a.id==='guest1'&&d.guest1) return {...a, label:d.guest1.label||a.label, pw:d.guest1.pw||a.pw, hidden:!!d.guest1.hidden};
-      if(a.id==='guest2'&&d.guest2) return {...a, label:d.guest2.label||a.label, pw:d.guest2.pw||a.pw, hidden:!!d.guest2.hidden};
+      if(a.id==='jesu2'&&d.jesu2) return {...a, label:d.jesu2.label||a.label, pw:d.jesu2.pw||a.pw};
+      if(a.id==='guest1'&&d.guest1) return {...a, label:d.guest1.label||a.label, pw:d.guest1.pw||a.pw};
+      if(a.id==='guest2'&&d.guest2) return {...a, label:d.guest2.label||a.label, pw:d.guest2.pw||a.pw};
       return a;
     });
     const BASE_COLORS=['c1','c2','c3','c4','c0'];
