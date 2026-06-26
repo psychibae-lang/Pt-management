@@ -398,7 +398,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
       </div>
       <div style="font-size:11px;color:var(--text2);margin-top:4px;">📅선택 · ✕지우기 · 저장(진료일+다음내원일+대리처방+선택의료)</div>
     </div>
-    <div style="margin-bottom:14px;padding-top:12px;border-top:1px solid var(--border);">
+    <div style="margin-bottom:36px;padding-top:12px;border-top:1px solid var(--border);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <div class="card-title" style="margin-bottom:0;">복용약물</div>
         <div style="display:flex;align-items:center;gap:8px;">
@@ -416,7 +416,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
         </div>
         <div id="copyDrugPreview" style="margin-top:8px;"></div>
       </div>
-      <div id="piDrugArea"></div>
+      <div id="piDrugArea" style="margin-bottom:8px;"></div>
     </div>
     <div style="margin-bottom:12px;padding-top:12px;border-top:1px solid var(--border);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -1517,8 +1517,8 @@ function renderPatientDrugs(){
         +'</td>';
       var codeVal=((d.drug_code||'')).toString().replace(/"/g,'&quot;');
       html+='<td style="'+ts+';position:relative;">'
-        +'<input data-pidx="'+i+'" data-pfield="drug_code" style="'+is+'width:70px;" value="'+codeVal+'" oninput="showDrugSuggest(this,'+i+')" onchange="onDrugChange('+i+',\'drug_code\',this.value)" onblur="hideSuggest('+i+')" autocomplete="off">'
-        +'<div id="suggest_'+i+'" style="display:none;position:absolute;top:100%;left:0;z-index:999;background:#fff;border:1px solid #ddd;border-radius:8px;max-height:160px;overflow-y:auto;min-width:220px;box-shadow:0 4px 16px rgba(0,0,0,0.15);"></div>'
+        +'<input data-pidx="'+i+'" data-pfield="drug_code" style="'+is+'width:100px;" value="'+codeVal+'" oninput="showDrugSuggest(this,'+i+')" onchange="onDrugChange('+i+',\'drug_code\',this.value)" onblur="hideSuggest('+i+')" autocomplete="off">'
+        +'<div id="suggest_'+i+'" style="display:none;position:absolute;top:100%;left:0;z-index:999;background:#fff;border:1px solid #ddd;border-radius:8px;max-height:220px;overflow-y:auto;min-width:260px;box-shadow:0 4px 16px rgba(0,0,0,0.15);"></div>'
         +'</td>';
       var nameVal=((d.drug_name||'')).toString().replace(/"/g,'&quot;');
       html+='<td style="'+ts+'"><input id="drugname_'+i+'" data-pidx="'+i+'" data-pfield="drug_name" style="'+is+'width:120px;" value="'+nameVal+'" onchange="onDrugChange('+i+',\'drug_name\',this.value)"></td>';
@@ -1595,7 +1595,7 @@ async function showDrugSuggest(input,idx){
   box.innerHTML=matches.map(function(m){
     var sc=m.code.replace(/\\/g,'\\\\').replace(/'/g,"\\'"),sn=m.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var hl=m.code.replace(new RegExp('('+query+')','gi'),'<strong style="color:#4f8ef7;">$1</strong>');
-    return '<div onmousedown="selectDrug('+idx+',\''+sc+'\',\''+sn+'\',this)" style="padding:7px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;"><span style="font-family:monospace;color:#4f8ef7;min-width:70px;">'+hl+'</span><span style="color:#666;">'+m.name+'</span></div>';
+    return '<div onmousedown="selectDrug('+idx+',\''+sc+'\',\''+sn+'\',this)" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;"><span style="font-family:monospace;color:#4f8ef7;min-width:70px;">'+hl+'</span><span style="color:#666;">'+m.name+'</span></div>';
   }).join('');
   box.style.display='block';
 }
