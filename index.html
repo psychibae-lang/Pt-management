@@ -93,7 +93,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
 @media(max-width:600px){.nav-tab{padding:9px 10px;font-size:12px;}.pt-card{grid-template-columns:1fr;}.container{padding:10px 8px;}}
 /* 대리처방 테이블 */
 #proxyTable th, #proxyTable td { white-space:nowrap; }
-#proxyTable th:nth-child(3), #proxyTable td:nth-child(3) { max-width:120px; white-space:normal; font-size:11px; word-break:keep-all; }
+#proxyTable th:nth-child(4), #proxyTable td:nth-child(4) { max-width:160px; white-space:normal; font-size:11px; word-break:keep-all; line-height:1.4; }
 #proxyTable th:nth-child(2), #proxyTable td:nth-child(2),
 #proxyTable th:nth-child(4), #proxyTable td:nth-child(4) { min-width:60px; }
 #proxyTable th { cursor:pointer; user-select:none; }
@@ -668,6 +668,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
       <div class="card-title" style="margin-bottom:0;">대리처방 환자 명단</div>
       <div style="display:flex;align-items:center;gap:8px;">
         <span id="proxyCount" style="font-size:12px;color:var(--text2);"></span>
+        <button class="btn btn-success" onclick="saveSelectedProxyPDF()" style="font-size:11px;padding:6px 10px;">🖨️ 선택 PDF 저장</button>
         <button class="btn btn-primary" onclick="loadSpecialList('proxy')" style="font-size:11px;padding:6px 10px;">🔄 새로고침</button>
       </div>
     </div>
@@ -682,6 +683,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
     <div style="overflow-x:auto;">
       <table id="proxyTable">
         <thead><tr>
+          <th style="width:30px;"><input type="checkbox" id="proxyCheckAll" onchange="toggleAllProxy(this)"></th>
           <th onclick="sortProxyTable('chart')" style="cursor:pointer;white-space:nowrap;min-width:56px;">챠트 <span id="sort_chart">↕</span></th>
           <th onclick="sortProxyTable('visitor_name')" style="cursor:pointer;min-width:60px;">방문자 <span id="sort_visitor_name">↕</span></th>
           <th onclick="sortProxyTable('relation')" style="cursor:pointer;min-width:50px;">관계 <span id="sort_relation">↕</span></th>
@@ -1722,7 +1724,7 @@ async function loadSpecialList(type){
   setStatus(statusId,'loading','조회 중...');
   try{
     if(type==='proxy'){
-      var rows=await sbGet('daeri',{select:'chart,visitor_name,visitor_phone,relation,patient_name,created_at',order:'created_at.desc',limit:'500'});
+      var rows=await sbGet('daeri',{select:'id,chart,visitor_name,visitor_phone,visitor_birth,visitor_addr,relation,patient_name,patient_phone,patient_birth,patient_addr,reason,signature_url,created_at',order:'created_at.desc',limit:'500'});
       _proxyAllRows=rows;
       document.getElementById(countId).textContent=rows.length+'명';
       renderProxyTable();
@@ -1787,7 +1789,8 @@ function renderProxyTable(){
     var d6=caToD6(r.created_at);
     var chart=r.chart||'-';
     var tr=document.createElement('tr');
-    tr.innerHTML='<td><span class="chart-tag" style="cursor:pointer;" onclick="goToPatient(\''+chart+'\')">'+chart+'</span></td>'
+    tr.innerHTML='<td><input type="checkbox" class="proxy-chk" data-id="'+r.id+'" onchange="updateProxyCheckAll()"></td>'
+      +'<td><span class="chart-tag" style="cursor:pointer;" onclick="goToPatient(\''+chart+'\')">'+chart+'</span></td>'
       +'<td style="font-size:13px;white-space:nowrap;">'+(r.visitor_name||'-')+'</td>'
       +'<td style="font-size:11px;color:#555;max-width:110px;">'+(r.relation||'-')+'</td>'
       +'<td style="font-size:13px;white-space:nowrap;">'+(r.patient_name||'-')+'</td>'
@@ -1805,6 +1808,55 @@ function sortProxyTable(col){
   if(_proxySortCol===col){ _proxySortDir*=-1; }
   else { _proxySortCol=col; _proxySortDir=1; }
   renderProxyTable();
+}
+
+function toggleAllProxy(src){
+  document.querySelectorAll('.proxy-chk').forEach(function(c){c.checked=src.checked;});
+}
+function updateProxyCheckAll(){
+  var all=document.querySelectorAll('.proxy-chk');
+  var checkedCnt=document.querySelectorAll('.proxy-chk:checked').length;
+  var allBox=document.getElementById('proxyCheckAll');
+  if(allBox) allBox.checked = all.length>0 && checkedCnt===all.length;
+}
+
+function proxyPdfRowHtml(r){
+  var dt=r.created_at?new Date(r.created_at).toLocaleString('ko-KR'):'-';
+  return '<h3 style="margin:0 0 10px;color:#1a3a5c;">대리 처방 — '+(r.visitor_name||'')+' ('+dt+')</h3>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:30px;">'
+    +srTr('접수일시', dt)+srTr('차트번호', r.chart)
+    +'<tr><td colspan="2" style="padding:6px 0;font-weight:bold;color:#2563eb;border-bottom:1px solid #f3f4f6;font-size:11px;">▸ 대리수령자</td></tr>'
+    +srTr('성명', r.visitor_name)+srTr('연락처', r.visitor_phone)
+    +srTr('생년월일', r.visitor_birth)+srTr('주소', r.visitor_addr)
+    +srTr('환자와의 관계', r.relation)
+    +'<tr><td colspan="2" style="padding:6px 0;font-weight:bold;color:#16a34a;border-bottom:1px solid #f3f4f6;font-size:11px;">▸ 환자 정보</td></tr>'
+    +srTr('환자 성명', r.patient_name)+srTr('환자 연락처', r.patient_phone)
+    +srTr('환자 생년월일', r.patient_birth)+srTr('환자 주소', r.patient_addr)
+    +srTr('대리수령 사유', r.reason)
+    +'</table>'
+    +(r.signature_url ? '<div style="margin:-20px 0 30px;"><div style="font-size:11px;color:#6b7280;margin-bottom:5px;">서명</div><img src="'+r.signature_url+'" style="border:1px solid #e5e7eb;border-radius:8px;max-width:100%;max-height:120px;background:#f9fafb;"></div>' : '<div style="color:#9ca3af;margin:-20px 0 30px;font-size:12px;">서명 이미지 없음</div>');
+}
+
+function saveSelectedProxyPDF(){
+  var ids=Array.from(document.querySelectorAll('.proxy-chk:checked')).map(function(c){return c.dataset.id;});
+  if(!ids.length){ showToast('⚠️ 체크된 항목이 없습니다.'); return; }
+  var rows=_proxyAllRows.filter(function(r){return ids.indexOf(String(r.id))>-1;});
+  if(!rows.length){ showToast('⚠️ 선택한 데이터를 찾을 수 없습니다.'); return; }
+  // 파일명: 챠트번호+대리+신청일(yymmdd) 형식, 예) 83대리260622
+  var names=rows.map(function(r){
+    var d6=caToD6(r.created_at)||'';
+    return (r.chart||'')+'대리'+d6;
+  });
+  var title = names.length<=3
+    ? names.join('_')
+    : names.slice(0,3).join('_')+'_외'+(names.length-3)+'건';
+  var body=rows.map(function(r,i){
+    return '<div style="'+(i<rows.length-1?'page-break-after:always;':'')+'padding-bottom:10px;">'+proxyPdfRowHtml(r)+'</div>';
+  }).join('');
+  var w=window.open('','_blank');
+  if(!w){ showToast('팝업 차단을 해제해주세요.'); return; }
+  w.document.write('<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>'+title+'</title><style>body{font-family:\'Noto Sans KR\',sans-serif;padding:20px;font-size:13px}table{width:100%;border-collapse:collapse}td{padding:7px 4px;border-bottom:1px solid #f3f4f6}@media print{button{display:none}}</style></head><body>'+body+'<br><button onclick="window.print()" style="padding:10px 24px;background:#1a3a5c;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;">🖨️ 인쇄 / PDF 저장</button></body></html>');
+  w.document.close();
 }
 // ══ 문자 발송 탭 ══════════════════════════════════════
 var _smsGroup=null,_smsDates=[],_smsList=[],_smsOrigMsg='';
@@ -5359,7 +5411,7 @@ async function dvSavePDF() {
         <span style="opacity:.5;font-size:10px;">기본</span>
       </div>
     </div>
-    <iframe id="messengerFrame" src="messenger.html" style="flex:1;width:100%;border:none;display:block;" allowfullscreen></iframe>
+    <iframe id="messengerFrame" src="mesenger_h.html" style="flex:1;width:100%;border:none;display:block;" allowfullscreen></iframe>
   </div>
   <!-- 분할 토글 버튼 -->
   <button id="msgr2Toggle" onclick="toggleMessenger2()" title="두 번째 메신저 열기/닫기"
@@ -5395,10 +5447,10 @@ async function dvSavePDF() {
         style="width:100%;padding:9px 12px;border:1.5px solid #e0e4ef;border-radius:8px;font-size:13px;outline:none;">
     </div>
     <div style="margin-bottom:12px;">
-      <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:5px;">messenger.html 경로 또는 URL</label>
-      <input id="msgr2SrcInput" type="text" placeholder="messenger.html 또는 https://..."
+      <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:5px;">messenger_s.html 경로 또는 URL</label>
+      <input id="msgr2SrcInput" type="text" placeholder="messenger_s.html 또는 https://..."
         style="width:100%;padding:9px 12px;border:1.5px solid #e0e4ef;border-radius:8px;font-size:13px;outline:none;font-family:monospace;">
-      <div style="font-size:10px;color:#888;margin-top:4px;">같은 서버의 다른 messenger.html이나 외부 URL 입력</div>
+      <div style="font-size:10px;color:#888;margin-top:4px;">같은 서버의 다른 messenger_s.html이나 외부 URL 입력</div>
     </div>
     <div style="background:#eef3fe;border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:11px;color:#1a3a5c;line-height:1.7;">
       <b>💡 사용법:</b><br>
@@ -6280,7 +6332,7 @@ function bpEsc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&
     if(num === 1){
       // 메신저 1: 바로 열기
       var w = window.open(
-        'messenger.html',
+        'mesenger_h.html',
         'messenger_1',
         'width=420,height=700,resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no'
       );
@@ -6291,12 +6343,8 @@ function bpEsc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&
       // 메신저 2: 저장된 URL 있으면 바로, 없으면 설정 모달
       var saved = '';
       try{ saved = JSON.parse(localStorage.getItem('msgr2PopConfig')||'{}').src || ''; }catch(e){}
-      if(saved){
-        _openPop2(saved);
-      } else {
-        document.getElementById('msgr2PopSrc').value = '';
-        document.getElementById('msgr2PopModal').style.display = 'flex';
-      }
+      if(!saved) saved = 'messenger_s.html';
+      _openPop2(saved);
     }
   };
 
@@ -6333,6 +6381,9 @@ function bpEsc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&
     if(saved.src){
       // 저장된 src가 있으면 placeholder 숨기고 iframe 로드
       loadMsgr2(saved.src);
+    } else {
+      // 저장된 설정이 없으면 messenger_s.html을 기본값으로 사용
+      loadMsgr2('messenger_s.html');
     }
   });
 
@@ -6345,9 +6396,7 @@ function bpEsc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&
       var saved = {};
       try{ saved = JSON.parse(localStorage.getItem('msgr2Config')||'{}'); }catch(e){}
       if(!saved.src){
-        _msgr2Open = false; // 아직 열지 않음
-        openMsgr2Settings();
-        return;
+        saved.src = 'messenger_s.html';
       }
       pane.style.width = '50%';
       btn.textContent = '◀';
