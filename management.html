@@ -5411,7 +5411,7 @@ async function dvSavePDF() {
         <span style="opacity:.5;font-size:10px;">기본</span>
       </div>
     </div>
-    <iframe id="messengerFrame" src="messenger_h.html" style="flex:1;width:100%;border:none;display:block;" allowfullscreen></iframe>
+    <iframe id="messengerFrame" src="mesenger_h.html" style="flex:1;width:100%;border:none;display:block;" allowfullscreen></iframe>
   </div>
   <!-- 분할 토글 버튼 -->
   <button id="msgr2Toggle" onclick="toggleMessenger2()" title="두 번째 메신저 열기/닫기"
@@ -6332,7 +6332,7 @@ function bpEsc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&
     if(num === 1){
       // 메신저 1: 바로 열기
       var w = window.open(
-        'messenger_h.html',
+        'mesenger_h.html',
         'messenger_1',
         'width=420,height=700,resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no'
       );
