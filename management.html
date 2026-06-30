@@ -5411,7 +5411,7 @@ async function dvSavePDF() {
         <span style="opacity:.5;font-size:10px;">기본</span>
       </div>
     </div>
-    <iframe id="messengerFrame" src="messenger.html" style="flex:1;width:100%;border:none;display:block;" allowfullscreen></iframe>
+    <iframe id="messengerFrame" src="messenger_h.html" style="flex:1;width:100%;border:none;display:block;" allowfullscreen></iframe>
   </div>
   <!-- 분할 토글 버튼 -->
   <button id="msgr2Toggle" onclick="toggleMessenger2()" title="두 번째 메신저 열기/닫기"
@@ -5447,10 +5447,10 @@ async function dvSavePDF() {
         style="width:100%;padding:9px 12px;border:1.5px solid #e0e4ef;border-radius:8px;font-size:13px;outline:none;">
     </div>
     <div style="margin-bottom:12px;">
-      <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:5px;">messenger.html 경로 또는 URL</label>
-      <input id="msgr2SrcInput" type="text" placeholder="messenger.html 또는 https://..."
+      <label style="font-size:11px;font-weight:700;color:#666;display:block;margin-bottom:5px;">messenger_s.html 경로 또는 URL</label>
+      <input id="msgr2SrcInput" type="text" placeholder="messenger_s.html 또는 https://..."
         style="width:100%;padding:9px 12px;border:1.5px solid #e0e4ef;border-radius:8px;font-size:13px;outline:none;font-family:monospace;">
-      <div style="font-size:10px;color:#888;margin-top:4px;">같은 서버의 다른 messenger.html이나 외부 URL 입력</div>
+      <div style="font-size:10px;color:#888;margin-top:4px;">같은 서버의 다른 messenger_s.html이나 외부 URL 입력</div>
     </div>
     <div style="background:#eef3fe;border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:11px;color:#1a3a5c;line-height:1.7;">
       <b>💡 사용법:</b><br>
@@ -6332,7 +6332,7 @@ function bpEsc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&
     if(num === 1){
       // 메신저 1: 바로 열기
       var w = window.open(
-        'messenger.html',
+        'messenger_h.html',
         'messenger_1',
         'width=420,height=700,resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no'
       );
@@ -6343,12 +6343,8 @@ function bpEsc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&
       // 메신저 2: 저장된 URL 있으면 바로, 없으면 설정 모달
       var saved = '';
       try{ saved = JSON.parse(localStorage.getItem('msgr2PopConfig')||'{}').src || ''; }catch(e){}
-      if(saved){
-        _openPop2(saved);
-      } else {
-        document.getElementById('msgr2PopSrc').value = '';
-        document.getElementById('msgr2PopModal').style.display = 'flex';
-      }
+      if(!saved) saved = 'messenger_s.html';
+      _openPop2(saved);
     }
   };
 
@@ -6385,6 +6381,9 @@ function bpEsc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&
     if(saved.src){
       // 저장된 src가 있으면 placeholder 숨기고 iframe 로드
       loadMsgr2(saved.src);
+    } else {
+      // 저장된 설정이 없으면 messenger_s.html을 기본값으로 사용
+      loadMsgr2('messenger_s.html');
     }
   });
 
@@ -6397,9 +6396,7 @@ function bpEsc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&
       var saved = {};
       try{ saved = JSON.parse(localStorage.getItem('msgr2Config')||'{}'); }catch(e){}
       if(!saved.src){
-        _msgr2Open = false; // 아직 열지 않음
-        openMsgr2Settings();
-        return;
+        saved.src = 'messenger_s.html';
       }
       pane.style.width = '50%';
       btn.textContent = '◀';

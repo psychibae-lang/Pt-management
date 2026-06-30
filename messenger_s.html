@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>한강의원 메신저</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#eef0f5;display:flex;align-items:flex-start;min-height:100vh;}
+#wrap{width:360px;height:100vh;display:flex;flex-direction:column;background:#fff;box-shadow:2px 0 12px rgba(0,0,0,0.10);overflow:hidden;position:relative;min-width:260px;max-width:700px;min-height:320px;max-height:100vh;}
+#wrap.collapsed{width:0!important;}
+#toggle-btn{position:fixed;top:0;width:22px;height:48px;background:#534AB7;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:0 8px 8px 0;box-shadow:2px 2px 6px rgba(0,0,0,0.15);z-index:999;}
+#toggle-btn svg{fill:#fff;width:12px;height:12px;transition:transform 0.25s;}
+#wrap.collapsed~#toggle-btn svg{transform:rotate(180deg);}
+/* 리사이즈 핸들 */
+#resize-e{position:absolute;top:0;right:0;width:6px;height:100%;cursor:ew-resize;z-index:900;background:transparent;}
+#resize-e:hover,#resize-e.dragging{background:rgba(83,74,183,0.18);}
+#resize-s{position:absolute;bottom:0;left:0;width:100%;height:6px;cursor:ns-resize;z-index:900;background:transparent;}
+#resize-s:hover,#resize-s.dragging{background:rgba(83,74,183,0.18);}
+#resize-se{position:absolute;bottom:0;right:0;width:14px;height:14px;cursor:se-resize;z-index:901;display:flex;align-items:center;justify-content:center;}
+#resize-se::after{content:'';display:block;width:8px;height:8px;border-right:2px solid #bbb;border-bottom:2px solid #bbb;border-radius:0 0 3px 0;}
+#titlebar{background:#534AB7;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+#titlebar .ttl{font-size:13px;font-weight:600;flex:1;}
+#titlebar .sub{font-size:11px;opacity:0.75;}
+.login-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:20px;}
+.login-card{width:100%;display:flex;flex-direction:column;align-items:center;gap:10px;}
+.login-title{font-size:15px;font-weight:700;color:#1a1a2e;}
+.login-sub{font-size:11px;color:#888;text-align:center;}
+.user-btns{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;}
+.user-btn{padding:6px 12px;border-radius:16px;border:1.5px solid #e0e0e0;background:#fff;color:#333;font-size:12px;cursor:pointer;font-weight:500;}
+.user-btn.sel{background:#534AB7;color:#fff;border-color:#534AB7;}
+.pw-input{width:100%;font-size:13px;padding:9px 12px;border-radius:8px;border:1.5px solid #e0e0e0;outline:none;}
+.pw-input:focus{border-color:#534AB7;}
+.err{font-size:11px;color:#e53e3e;height:16px;text-align:center;}
+.login-btn{width:100%;padding:10px;background:#534AB7;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
+#app{flex:1;display:flex;overflow:hidden;}
+.sidebar{width:110px;border-right:1px solid #eee;display:flex;flex-direction:column;background:#fafafa;flex-shrink:0;}
+.sidebar-top{padding:10px 8px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:6px;}
+.me-label{font-size:11px;font-weight:600;color:#534AB7;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.logout-btn{font-size:10px;color:#aaa;background:none;border:none;cursor:pointer;white-space:nowrap;}
+.user-list{flex:1;overflow-y:auto;padding:4px 0;}
+.uitem{display:flex;align-items:center;gap:6px;padding:7px 8px;cursor:pointer;border-left:2px solid transparent;position:relative;}
+.uitem:hover{background:#f0efff;}
+.uitem.active{background:#f0efff;border-left-color:#534AB7;}
+.u-name{font-size:12px;font-weight:500;color:#1a1a2e;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.badge{background:#E53E3E;color:#fff;border-radius:8px;font-size:9px;padding:1px 5px;font-weight:700;}
+.av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;}
+.av-wrap{position:relative;flex-shrink:0;}
+.online-dot{position:absolute;bottom:0;right:0;width:8px;height:8px;border-radius:50%;background:#ccc;border:1.5px solid #fff;}
+.online-dot.on{background:#1D9E75;}
+.call-btn.start:disabled,.vcall-btn:disabled{opacity:0.35;cursor:not-allowed;}
+.sm{width:30px;height:30px;font-size:10px;}
+.c0{background:#EEEDFE;color:#3C3489;}.c1{background:#E1F5EE;color:#085041;}
+.c2{background:#FAECE7;color:#712B13;}.c3{background:#E6F1FB;color:#0C447C;}
+.c4{background:#FAEEDA;color:#633806;}
+.chat-area{flex:1;display:flex;flex-direction:column;min-width:0;}
+.chat-top{padding:9px 10px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.chat-top-name{font-size:13px;font-weight:600;color:#1a1a2e;flex:1;}
+/* 통화 버튼 */
+.call-btn{width:28px;height:28px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.call-btn.start{background:#1D9E75;}
+.call-btn.end{background:#E53E3E;}
+.call-btn svg{width:14px;height:14px;fill:#fff;}
+/* 통화 상태 바 */
+#call-bar{display:none;background:#1D9E75;color:#fff;font-size:11px;padding:5px 10px;text-align:center;flex-shrink:0;align-items:center;gap:8px;justify-content:center;}
+#call-bar.show{display:flex;}
+#call-bar.ringing{background:#f59e0b;}
+/* 수신 알림 오버레이 */
+#incoming{display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;border-radius:16px;padding:14px 20px;z-index:9999;text-align:center;min-width:220px;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
+#incoming.show{display:block;}
+#incoming .inc-name{font-size:14px;font-weight:600;margin-bottom:10px;}
+#incoming .inc-btns{display:flex;gap:10px;justify-content:center;}
+#incoming .inc-btns button{padding:8px 18px;border-radius:20px;border:none;font-size:12px;font-weight:600;cursor:pointer;}
+#incoming .accept{background:#1D9E75;color:#fff;}
+#incoming .reject{background:#E53E3E;color:#fff;}
+.msgs{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px;}
+.mrow{display:flex;align-items:flex-end;gap:6px;}
+.mrow.mine{flex-direction:row-reverse;}
+.bubble{max-width:80%;padding:9px 13px;border-radius:16px;font-size:14px;line-height:1.6;word-break:break-word;font-weight:500;}
+.bubble.t{background:#f2f2f7;color:#1a1a2e;border-bottom-left-radius:3px;}
+.bubble.m{background:#534AB7;color:#fff;border-bottom-right-radius:3px;}
+/* 계정별 고유 말풍선 색상 */
+.bubble.bc0{background:#534AB7;color:#fff;border-bottom-right-radius:3px;}
+.bubble.bc1{background:#1D9E75;color:#fff;border-bottom-right-radius:3px;}
+.bubble.bc2{background:#c0392b;color:#fff;border-bottom-right-radius:3px;}
+.bubble.bc3{background:#2471a3;color:#fff;border-bottom-right-radius:3px;}
+.bubble.bc4{background:#b7770d;color:#fff;border-bottom-right-radius:3px;}
+.bubble.bc5{background:#7d3c98;color:#fff;border-bottom-right-radius:3px;}
+.bubble.bc6{background:#1a5276;color:#fff;border-bottom-right-radius:3px;}
+/* 상대방 말풍선 색상 */
+.bubble.rc0{background:#EEEDFE;color:#3C3489;border-bottom-left-radius:3px;}
+.bubble.rc1{background:#D5F5E3;color:#0b6b4a;border-bottom-left-radius:3px;}
+.bubble.rc2{background:#FADBD8;color:#922b21;border-bottom-left-radius:3px;}
+.bubble.rc3{background:#D6EAF8;color:#1a5276;border-bottom-left-radius:3px;}
+.bubble.rc4{background:#FDEBD0;color:#784212;border-bottom-left-radius:3px;}
+.bubble.rc5{background:#E8DAEF;color:#6c3483;border-bottom-left-radius:3px;}
+.bubble.rc6{background:#D1ECF1;color:#0c5460;border-bottom-left-radius:3px;}
+.bubble.call-log{background:#f0f0f0;color:#666;font-size:11px;text-align:center;border-radius:8px;}
+.mt{font-size:9px;color:#bbb;margin-bottom:2px;}
+.sender-name{font-size:11px;font-weight:700;margin-bottom:3px;opacity:0.75;}
+.msg-img{max-width:100%;max-height:160px;border-radius:10px;cursor:pointer;display:block;}
+.msg-file{display:flex;align-items:center;gap:6px;padding:4px 0;}
+.msg-file a{font-size:11px;color:inherit;text-decoration:underline;word-break:break-all;}
+.upload-bar{height:3px;background:#534AB7;border-radius:2px;transition:width 0.2s;}
+.input-row{display:flex;gap:6px;padding:8px;border-top:1px solid #eee;flex-shrink:0;align-items:center;}
+.input-row input[type=text]{flex:1;font-size:12px;padding:7px 11px;border-radius:18px;border:1.5px solid #e0e0e0;outline:none;background:#fafafa;}
+.input-row input[type=text]:focus{border-color:#534AB7;background:#fff;}
+.sbtn{width:30px;height:30px;border-radius:50%;background:#534AB7;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.fbtn{width:30px;height:30px;border-radius:50%;background:#f0efff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#ccc;gap:6px;font-size:12px;}
+.dsep{text-align:center;font-size:10px;color:#bbb;padding:3px 0;}
+#imgModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9998;align-items:center;justify-content:center;cursor:pointer;}
+#imgModal img{max-width:95vw;max-height:95vh;border-radius:8px;}
+#imgModal.show{display:flex;}
+/* ── 영상통화 전체화면 ── */
+#videoOverlay{display:none;position:fixed;inset:0;background:#000;z-index:10000;flex-direction:column;align-items:center;justify-content:center;}
+#videoOverlay.show{display:flex;}
+#remoteVideo{width:100%;height:100%;object-fit:cover;background:#111;}
+#localVideo{position:absolute;bottom:20px;right:16px;width:100px;height:140px;object-fit:cover;border-radius:10px;border:2px solid #fff;background:#222;z-index:10001;}
+.video-bar{position:absolute;top:0;left:0;right:0;padding:14px 16px;background:linear-gradient(to bottom,rgba(0,0,0,0.6),transparent);color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;z-index:10002;}
+.video-controls{position:absolute;bottom:0;left:0;right:0;padding:20px 16px 32px;background:linear-gradient(to top,rgba(0,0,0,0.7),transparent);display:flex;justify-content:center;gap:20px;z-index:10002;}
+.vc-btn{width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;}
+.vc-btn.end{background:#E53E3E;}
+.vc-btn.mute{background:rgba(255,255,255,0.2);}
+.vc-btn.mute.active{background:rgba(255,255,255,0.5);}
+.vc-btn.cam{background:rgba(255,255,255,0.2);}
+.vc-btn.cam.active{background:rgba(255,255,255,0.5);}
+.video-status{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:14px;font-weight:600;text-align:center;z-index:10002;pointer-events:none;}
+/* 영상통화 버튼 */
+.vcall-btn{width:28px;height:28px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#7c3aed;}
+.vcall-btn svg{width:14px;height:14px;fill:#fff;}
+/* 관리자 모달 */
+#adminModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9997;align-items:center;justify-content:center;}
+#adminModal.show{display:flex;}
+.admin-card{background:#fff;border-radius:14px;padding:22px 20px;width:300px;box-shadow:0 8px 32px rgba(0,0,0,0.2);}
+.admin-card h3{font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:16px;text-align:center;}
+.admin-row{margin-bottom:14px;}
+.admin-row label{font-size:11px;color:#666;font-weight:600;display:block;margin-bottom:4px;}
+.admin-row input{width:100%;font-size:12px;padding:7px 10px;border-radius:7px;border:1.5px solid #e0e0e0;outline:none;}
+.admin-row input:focus{border-color:#534AB7;}
+.admin-section{background:#f7f7fb;border-radius:9px;padding:12px;margin-bottom:12px;}
+.admin-section-title{font-size:11px;font-weight:700;color:#534AB7;margin-bottom:10px;}
+.admin-btns{display:flex;gap:8px;margin-top:4px;}
+.admin-save{flex:1;padding:9px;background:#534AB7;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;}
+.admin-cancel{padding:9px 14px;background:#f0f0f0;color:#555;border:none;border-radius:7px;font-size:12px;cursor:pointer;}
+.admin-msg{font-size:11px;color:#1D9E75;text-align:center;height:16px;margin-top:6px;}
+.admin-btn-top{font-size:10px;background:#f0efff;color:#534AB7;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-weight:600;}
+.extra-acct-del{width:26px;height:26px;border-radius:50%;background:#fde8e8;color:#E53E3E;border:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.extra-acct-del:hover{background:#E53E3E;color:#fff;}
+/* 탭 */
+.admin-tabs{display:flex;border-bottom:1.5px solid #eee;margin-bottom:14px;}
+.admin-tab{flex:1;padding:8px 4px;font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;color:#aaa;border-bottom:2px solid transparent;margin-bottom:-1.5px;}
+.admin-tab.on{color:#534AB7;border-bottom-color:#534AB7;}
+.admin-pane{display:none;}.admin-pane.on{display:block;}
+/* 통화기록 */
+.clog-list{max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
+.clog-item{background:#f7f7fb;border-radius:9px;padding:11px 12px;font-size:11px;}
+.clog-head{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
+.clog-type{font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;background:#534AB7;color:#fff;}
+.clog-type.video{background:#7c3aed;}
+.clog-name{font-weight:700;color:#1a1a2e;flex:1;}
+.clog-date{font-size:10px;color:#aaa;}
+.clog-time{color:#534AB7;font-weight:600;}
+.clog-memo{margin-top:5px;color:#444;background:#fff;border-radius:6px;padding:5px 8px;font-size:11px;line-height:1.4;}
+.clog-empty{text-align:center;color:#bbb;padding:30px 0;font-size:12px;}
+/* ── 플로팅 메시지 팝업 ── */
+#floatPopups{position:fixed;bottom:20px;left:10px;display:flex;flex-direction:column-reverse;gap:10px;z-index:10200;pointer-events:none;}
+.fpop{background:#fff;border-radius:16px;box-shadow:0 6px 28px rgba(0,0,0,0.22);width:300px;overflow:hidden;pointer-events:auto;animation:fpopIn 0.28s cubic-bezier(.34,1.56,.64,1);}
+@keyframes fpopIn{from{opacity:0;transform:translateX(-24px) scale(0.94);}to{opacity:1;transform:none;}}
+.fpop-head{background:#534AB7;color:#fff;padding:9px 12px;display:flex;align-items:center;gap:8px;}
+.fpop-head .fav{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;}
+.fpop-head .fname{font-size:12px;font-weight:600;flex:1;}
+.fpop-head .fclose{background:none;border:none;color:rgba(255,255,255,0.7);font-size:16px;cursor:pointer;line-height:1;padding:0 2px;}
+.fpop-head .fclose:hover{color:#fff;}
+.fpop-preview{padding:8px 12px 4px;font-size:12px;color:#333;line-height:1.5;max-height:60px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.fpop-preview.img{color:#888;font-style:italic;}
+.fpop-reply{display:flex;gap:6px;padding:6px 10px 10px;border-top:1px solid #f0f0f0;margin-top:4px;}
+.fpop-reply input{flex:1;font-size:12px;padding:6px 10px;border-radius:14px;border:1.5px solid #e0e0e0;outline:none;background:#fafafa;}
+.fpop-reply input:focus{border-color:#534AB7;background:#fff;}
+.fpop-reply button{width:28px;height:28px;border-radius:50%;background:#534AB7;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.fpop-open{display:block;width:100%;padding:5px 0;text-align:center;font-size:11px;color:#534AB7;font-weight:600;background:none;border:none;border-top:1px solid #f0f0f0;cursor:pointer;}
+.fpop-open:hover{background:#f0efff;}
+/* OS알림 허용 배너 */
+#notif-banner{display:none;position:fixed;top:0;left:0;right:0;background:#534AB7;color:#fff;font-size:12px;padding:8px 16px;z-index:10300;text-align:center;align-items:center;justify-content:center;gap:10px;}
+#notif-banner.show{display:flex;}
+#notif-banner button{padding:4px 12px;border-radius:12px;border:none;background:#fff;color:#534AB7;font-size:12px;font-weight:700;cursor:pointer;}
+#notif-banner .nb-close{background:none;border:none;color:rgba(255,255,255,0.7);font-size:18px;cursor:pointer;margin-left:6px;}
+/* 진료 메모 모달 */
+#memoModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10100;align-items:center;justify-content:center;}
+#memoModal.show{display:flex;}
+.memo-card{background:#fff;border-radius:14px;padding:22px 20px;width:290px;box-shadow:0 8px 32px rgba(0,0,0,0.2);}
+.memo-card h3{font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:4px;}
+.memo-card .memo-sub{font-size:11px;color:#888;margin-bottom:12px;}
+.memo-card textarea{width:100%;height:90px;font-size:12px;padding:8px 10px;border-radius:8px;border:1.5px solid #e0e0e0;outline:none;resize:none;line-height:1.5;}
+.memo-card textarea:focus{border-color:#534AB7;}
+.memo-btns{display:flex;gap:8px;margin-top:10px;}
+.memo-save{flex:1;padding:9px;background:#534AB7;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;}
+.memo-skip{padding:9px 14px;background:#f0f0f0;color:#555;border:none;border-radius:7px;font-size:12px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="resize-e"></div>
+  <div id="resize-s"></div>
+  <div id="resize-se"></div>
+  <div id="titlebar">
+    <span style="font-size:16px;">💬</span>
+    <span class="ttl" id="clinic-name-title">한강의원</span>
+    <span class="sub" id="me-badge"></span>
+    <button id="admin-top-btn" class="admin-btn-top" onclick="openAdmin()" style="display:none;">⚙️ 관리</button>
+  </div>
+  <div id="main-content" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div>
+</div>
+<button id="toggle-btn" onclick="toggleWrap()" title="접기/펼치기">
+  <svg viewBox="0 0 10 16"><path d="M8 2L2 8l6 6"/></svg>
+</button>
+<div id="imgModal" onclick="closeModal()"><img id="modalImg" src="" alt=""/></div>
+<!-- 수신 알림 -->
+<div id="incoming">
+  <div class="inc-name" id="inc-name">📞 통화 수신</div>
+  <div class="inc-btns">
+    <button class="accept" onclick="acceptCall()">받기</button>
+    <button class="reject" onclick="rejectCall()">거절</button>
+  </div>
+</div>
+<!-- 관리자 모달 -->
+<div id="adminModal">
+  <div class="admin-card" style="width:320px;max-height:90vh;overflow-y:auto;">
+    <div class="admin-tabs">
+      <button class="admin-tab on" onclick="switchAdminTab('accounts')">⚙️ 계정</button>
+      <button class="admin-tab" onclick="switchAdminTab('logs')">📋 통화기록</button>
+      <button class="admin-tab" onclick="switchAdminTab('chats')">🗑️ 대화삭제</button>
+      <button class="admin-tab" onclick="switchAdminTab('firebase')">🔥 연결</button>
+    </div>
+    <!-- 계정 관리 탭 -->
+    <div class="admin-pane on" id="adm-pane-accounts">
+      <div class="admin-section">
+        <div class="admin-section-title">원장 계정 (비번만 변경)</div>
+        <div class="admin-row"><label>비밀번호</label><input id="adm-pw-wonjang" type="text" placeholder="새 비밀번호"/></div>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-title">접수1 계정</div>
+        <div class="admin-row"><label>표시 이름</label><input id="adm-label1" type="text" placeholder="예: 접수1"/></div>
+        <div class="admin-row"><label>비밀번호</label><input id="adm-pw1" type="text" placeholder="새 비밀번호"/></div>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-title">접수2 계정</div>
+        <div class="admin-row"><label>표시 이름</label><input id="adm-label2" type="text" placeholder="예: 접수2"/></div>
+        <div class="admin-row"><label>비밀번호</label><input id="adm-pw2" type="text" placeholder="새 비밀번호"/></div>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-title">guest1 계정</div>
+        <div class="admin-row"><label>표시 이름</label><input id="adm-label-g1" type="text" placeholder="예: guest1"/></div>
+        <div class="admin-row"><label>비밀번호</label><input id="adm-pw-g1" type="text" placeholder="새 비밀번호"/></div>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-title">guest2 계정</div>
+        <div class="admin-row"><label>표시 이름</label><input id="adm-label-g2" type="text" placeholder="예: guest2"/></div>
+        <div class="admin-row"><label>비밀번호</label><input id="adm-pw-g2" type="text" placeholder="새 비밀번호"/></div>
+      </div>
+      <!-- 추가 계정 목록 -->
+      <div id="extra-accounts-wrap"></div>
+      <!-- 계정 추가 버튼 -->
+      <button onclick="addExtraAccountRow()" style="width:100%;padding:9px;background:#f0efff;color:#534AB7;border:2px dashed #c5c0f0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:12px;">＋ 계정 추가</button>
+
+      <div class="admin-section">
+        <div class="admin-section-title">💬 메시지 팝업 설정</div>
+        <div class="admin-row">
+          <label>팝업 지속시간</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input id="adm-popup-dur" type="number" min="0" max="300" placeholder="0" style="width:80px;"/>
+            <span style="font-size:11px;color:#888;">초 (0 = 수동으로 닫을 때까지)</span>
+          </div>
+        </div>
+        <div style="font-size:10px;color:#aaa;margin-top:-6px;">예: 5초, 10초, 30초 / 0이면 직접 닫기 전까지 유지</div>
+      </div>
+      <div class="admin-msg" id="adm-msg"></div>
+      <div class="admin-btns">
+        <button class="admin-cancel" onclick="closeAdmin()">취소</button>
+        <button class="admin-save" onclick="saveAdmin()">저장</button>
+      </div>
+    </div>
+    <!-- 통화기록 탭 -->
+    <div class="admin-pane" id="adm-pane-logs">
+      <div id="clog-list" class="clog-list"><div class="clog-empty">불러오는 중...</div></div>
+      <div class="admin-btns" style="margin-top:12px;">
+        <button class="admin-cancel" onclick="closeAdmin()">닫기</button>
+      </div>
+    </div>
+    <!-- 대화내용 삭제 탭 -->
+    <div class="admin-pane" id="adm-pane-chats">
+      <div class="admin-section">
+        <div class="admin-section-title">🗑️ 대화내용 삭제</div>
+        <p style="font-size:11px;color:#888;margin-bottom:12px;line-height:1.6;">삭제할 대화를 선택하세요. 삭제 후 복구할 수 없습니다.</p>
+        <div style="display:flex;flex-direction:column;gap:8px;" id="chat-clear-list"></div>
+      </div>
+      <div style="margin-top:8px;">
+        <button onclick="clearAllChats()" style="width:100%;padding:9px;background:#E53E3E;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;">⚠️ 전체 대화 모두 삭제</button>
+      </div>
+      <div id="chat-clear-msg" style="font-size:11px;text-align:center;margin-top:8px;min-height:16px;color:#1D9E75;"></div>
+      <div class="admin-btns" style="margin-top:10px;">
+        <button class="admin-cancel" onclick="closeAdmin()">닫기</button>
+      </div>
+    </div>
+    <!-- Firebase 연결 설정 탭 -->
+    <div class="admin-pane" id="adm-pane-firebase">
+      <div class="admin-section">
+        <div class="admin-section-title">🏥 병원/그룹 이름</div>
+        <div class="admin-row">
+          <label>표시 이름</label>
+          <input id="adm-clinic-name" type="text" placeholder="예: 한강의원"/>
+        </div>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-title">🔥 Firebase 데이터베이스</div>
+        <div class="admin-row">
+          <label>Database URL</label>
+          <input id="adm-fb-url" type="text" placeholder="https://your-app-default-rtdb.firebaseio.com/"/>
+        </div>
+        <div class="admin-row">
+          <label>Storage Bucket</label>
+          <input id="adm-fb-bucket" type="text" placeholder="your-app.firebasestorage.app"/>
+        </div>
+        <div style="background:#fff8e1;border-radius:7px;padding:9px 10px;font-size:10px;color:#7a5800;line-height:1.6;margin-top:4px;">
+          ⚠️ <b>Firebase 규칙 주의:</b> 새 프로젝트는 Realtime Database 규칙을 <code style="background:#f0e0a0;padding:1px 4px;border-radius:3px;">read/write: true</code>로 설정해야 합니다.<br/>
+          변경 후 페이지가 자동으로 새로고침됩니다.
+        </div>
+      </div>
+      <div class="admin-section" style="background:#eef6ff;">
+        <div class="admin-section-title" style="color:#0C447C;">📋 현재 연결 정보</div>
+        <div style="font-size:11px;color:#444;line-height:1.8;word-break:break-all;">
+          <div><b>이름:</b> <span id="fb-current-name">—</span></div>
+          <div><b>DB:</b> <span id="fb-current-url">—</span></div>
+          <div><b>Storage:</b> <span id="fb-current-bucket">—</span></div>
+        </div>
+      </div>
+      <div class="admin-msg" id="adm-fb-msg"></div>
+      <div class="admin-btns">
+        <button class="admin-cancel" onclick="closeAdmin()">취소</button>
+        <button class="admin-save" onclick="saveFBSettings()">저장 후 재시작</button>
+      </div>
+      <div style="margin-top:10px;text-align:center;">
+        <button onclick="resetFBSettings()" style="font-size:11px;color:#888;background:none;border:none;cursor:pointer;text-decoration:underline;">기본값으로 초기화</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- 진료 메모 모달 -->
+<div id="memoModal">
+  <div class="memo-card">
+    <h3>📝 진료 메모</h3>
+    <div class="memo-sub" id="memo-sub">통화 후 메모를 남겨주세요 (선택)</div>
+    <textarea id="memo-text" placeholder="진료 내용, 특이사항 등..."></textarea>
+    <div class="memo-btns">
+      <button class="memo-skip" onclick="saveMemo(false)">건너뛰기</button>
+      <button class="memo-save" onclick="saveMemo(true)">저장</button>
+    </div>
+  </div>
+</div>
+<!-- OS 알림 허용 배너 -->
+<div id="notif-banner">
+  <span>💬 메시지 알림을 받으려면 허용해주세요</span>
+  <button onclick="requestNotifPerm()">알림 허용</button>
+  <button class="nb-close" onclick="document.getElementById('notif-banner').classList.remove('show')">✕</button>
+</div>
+<!-- 플로팅 메시지 팝업 -->
+<div id="floatPopups"></div>
+<!-- 숨겨진 오디오 -->
+<audio id="remoteAudio" autoplay playsinline></audio>
+<!-- 영상통화 전체화면 오버레이 -->
+<div id="videoOverlay">
+  <video id="remoteVideo" autoplay playsinline></video>
+  <video id="localVideo" autoplay playsinline muted></video>
+  <div class="video-bar">
+    <span>📹</span>
+    <span id="video-peer-name">영상통화</span>
+    <span id="video-timer" style="font-size:11px;opacity:0.8;margin-left:auto;"></span>
+  </div>
+  <div class="video-status" id="video-status"></div>
+  <div class="video-controls">
+    <button class="vc-btn mute" id="vc-mute" onclick="toggleVMute()" title="음소거">🎤</button>
+    <button class="vc-btn end" onclick="hangUpVideo(true)" title="통화 종료">📵</button>
+    <button class="vc-btn cam" id="vc-cam" onclick="toggleVCam()" title="카메라 끄기">📷</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<script>
+// ── Firebase 설정 (localStorage 우선, 없으면 기본값) ──
+const DEFAULT_FB_CONFIG={
+  databaseURL:"https://notice-ped-default-rtdb.firebaseio.com/",
+  storageBucket:"temp-share-image-hanriver.firebasestorage.app",
+  clinicName:"사랑소아"
+};
+// ⚠️ 이 파일(messenger_p.html)은 ped DB로 고정되어 있습니다.
+// 관리자 화면에서 Database URL/Storage Bucket을 바꿔도 저장되지 않으며,
+// 새로고침하면 항상 위 DEFAULT_FB_CONFIG 값으로 복원됩니다.
+function loadFBConfig(){
+  return {...DEFAULT_FB_CONFIG};
+}
+function saveFBConfig(cfg){
+  // 고정 파일: DB 연결 정보 저장을 막음
+}
+const FB_CFG=loadFBConfig();
+
+// 타이틀 반영
+document.addEventListener('DOMContentLoaded',()=>{
+  document.title=FB_CFG.clinicName+' 메신저';
+  const el=document.getElementById('clinic-name-title');
+  if(el) el.textContent=FB_CFG.clinicName;
+});
+// titlebar 이름 즉시 반영 (DOMContentLoaded 전 실행 시)
+(function(){
+  const el=document.querySelector('.ttl');
+  if(el) el.textContent=FB_CFG.clinicName;
+})();
+
+firebase.initializeApp({
+  databaseURL: FB_CFG.databaseURL,
+  storageBucket: FB_CFG.storageBucket
+});
+const db=firebase.database();
+const storage=firebase.storage();
+
+const DEFAULT_ACCOUNTS=[
+  {id:'wonjang',label:'원장',   pw:'han1234',    c:'c0'},
+  {id:'jesu1',  label:'접수1',  pw:'js10000',    c:'c2'},
+  {id:'jesu2',  label:'접수2',  pw:'js20000',    c:'c3'},
+  {id:'guest1', label:'guest1', pw:'guest1',     c:'c1'},
+  {id:'guest2', label:'guest2', pw:'guest2',     c:'c4'},
+];
+let ACCOUNTS=[...DEFAULT_ACCOUNTS];
+
+// Firebase에서 계정 정보 로드 (동적 변경 가능)
+async function loadAccountsFromDB(){
+  try{
+    const snap=await db.ref('admin/accounts').once('value');
+    const d=snap.val();
+    if(d){
+      const base=DEFAULT_ACCOUNTS.map(a=>{
+        if(a.id==='wonjang'&&d.wonjang) return {...a, label:d.wonjang.label||a.label, pw:d.wonjang.pw||a.pw};
+        if(a.id==='jesu1'&&d.jesu1) return {...a, label:d.jesu1.label||a.label, pw:d.jesu1.pw||a.pw};
+        if(a.id==='jesu2'&&d.jesu2) return {...a, label:d.jesu2.label||a.label, pw:d.jesu2.pw||a.pw};
+        if(a.id==='guest1'&&d.guest1) return {...a, label:d.guest1.label||a.label, pw:d.guest1.pw||a.pw};
+        if(a.id==='guest2'&&d.guest2) return {...a, label:d.guest2.label||a.label, pw:d.guest2.pw||a.pw};
+        return a;
+      });
+      // 추가 계정 로드
+      const extras=d.extras?Object.entries(d.extras).map(([id,v])=>({id,label:v.label||id,pw:v.pw||'',c:'c4',extra:true})):[];
+      ACCOUNTS=[...base,...extras];
+    }
+  }catch(e){console.warn('계정 로드 실패',e);}
+}
+
+// 추가 계정 행 렌더링
+let extraRows=[]; // [{id, label, pw}]
+function renderExtraAccountRows(){
+  const wrap=document.getElementById('extra-accounts-wrap');
+  if(!wrap) return;
+  wrap.innerHTML=extraRows.map((r,i)=>`
+    <div class="admin-section" id="extra-row-${i}" style="position:relative;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div class="admin-section-title" style="margin-bottom:0;">추가 계정 ${i+1}</div>
+        <button class="extra-acct-del" onclick="removeExtraRow(${i})" title="삭제">✕</button>
+      </div>
+      <div class="admin-row"><label>아이디 (영문/숫자)</label><input id="extra-id-${i}" type="text" placeholder="예: staff1" value="${r.id||''}"/></div>
+      <div class="admin-row"><label>표시 이름</label><input id="extra-label-${i}" type="text" placeholder="예: 간호사1" value="${r.label||''}"/></div>
+      <div class="admin-row"><label>비밀번호</label><input id="extra-pw-${i}" type="text" placeholder="비밀번호" value="${r.pw||''}"/></div>
+    </div>`).join('');
+}
+function addExtraAccountRow(){
+  extraRows.push({id:'',label:'',pw:''});
+  renderExtraAccountRows();
+}
+function removeExtraRow(i){
+  extraRows.splice(i,1);
+  renderExtraAccountRows();
+}
+
+// 관리자 모달
+function openAdmin(){
+  const wj=ACCOUNTS.find(a=>a.id==='wonjang');
+  const j1=ACCOUNTS.find(a=>a.id==='jesu1');
+  const j2=ACCOUNTS.find(a=>a.id==='jesu2');
+  const g1=ACCOUNTS.find(a=>a.id==='guest1');
+  const g2=ACCOUNTS.find(a=>a.id==='guest2');
+  document.getElementById('adm-pw-wonjang').value=wj?.pw||'';
+  document.getElementById('adm-label1').value=j1?.label||'';
+  document.getElementById('adm-pw1').value=j1?.pw||'';
+  document.getElementById('adm-label2').value=j2?.label||'';
+  document.getElementById('adm-pw2').value=j2?.pw||'';
+  document.getElementById('adm-label-g1').value=g1?.label||'';
+  document.getElementById('adm-pw-g1').value=g1?.pw||'';
+  document.getElementById('adm-label-g2').value=g2?.label||'';
+  document.getElementById('adm-pw-g2').value=g2?.pw||'';
+  // 추가 계정 로드
+  extraRows=ACCOUNTS.filter(a=>a.extra).map(a=>({id:a.id,label:a.label,pw:a.pw}));
+  renderExtraAccountRows();
+  document.getElementById('adm-msg').textContent='';
+  document.getElementById('adm-popup-dur').value=popupDurationSec||0;
+  document.getElementById('adminModal').classList.add('show');
+}
+function closeAdmin(){
+  document.getElementById('adminModal').classList.remove('show');
+}
+async function saveAdmin(){
+  const pWj=(document.getElementById('adm-pw-wonjang').value||'').trim();
+  const l1=(document.getElementById('adm-label1').value||'').trim();
+  const p1=(document.getElementById('adm-pw1').value||'').trim();
+  const l2=(document.getElementById('adm-label2').value||'').trim();
+  const p2=(document.getElementById('adm-pw2').value||'').trim();
+  const lG1=(document.getElementById('adm-label-g1').value||'').trim();
+  const pG1=(document.getElementById('adm-pw-g1').value||'').trim();
+  const lG2=(document.getElementById('adm-label-g2').value||'').trim();
+  const pG2=(document.getElementById('adm-pw-g2').value||'').trim();
+  if(!pWj||!l1||!p1||!l2||!p2||!lG1||!pG1||!lG2||!pG2){
+    document.getElementById('adm-msg').style.color='#e53e3e';
+    document.getElementById('adm-msg').textContent='모든 항목을 입력해주세요.';
+    return;
+  }
+  // 추가 계정 수집 및 유효성 검사
+  const collectedExtras=[];
+  for(let i=0;i<extraRows.length;i++){
+    const eid=(document.getElementById('extra-id-'+i)?.value||'').trim().replace(/\s+/g,'');
+    const elabel=(document.getElementById('extra-label-'+i)?.value||'').trim();
+    const epw=(document.getElementById('extra-pw-'+i)?.value||'').trim();
+    if(!eid||!elabel||!epw){
+      document.getElementById('adm-msg').style.color='#e53e3e';
+      document.getElementById('adm-msg').textContent=`추가 계정 ${i+1}: 아이디/이름/비밀번호를 모두 입력해주세요.`;
+      return;
+    }
+    const reserved=['wonjang','jesu1','jesu2','guest1','guest2'];
+    if(reserved.includes(eid)){
+      document.getElementById('adm-msg').style.color='#e53e3e';
+      document.getElementById('adm-msg').textContent=`'${eid}'는 사용할 수 없는 아이디입니다.`;
+      return;
+    }
+    if(collectedExtras.find(x=>x.id===eid)){
+      document.getElementById('adm-msg').style.color='#e53e3e';
+      document.getElementById('adm-msg').textContent=`아이디 '${eid}'가 중복됩니다.`;
+      return;
+    }
+    collectedExtras.push({id:eid,label:elabel,pw:epw});
+  }
+  try{
+    const extrasObj={};
+    collectedExtras.forEach(e=>{extrasObj[e.id]={label:e.label,pw:e.pw};});
+    await db.ref('admin/accounts').set({
+      wonjang:{pw:pWj},
+      jesu1:{label:l1, pw:p1},
+      jesu2:{label:l2, pw:p2},
+      guest1:{label:lG1, pw:pG1},
+      guest2:{label:lG2, pw:pG2},
+      extras:extrasObj,
+    });
+    // 로컬 반영
+    const BASE_COLORS=['c1','c2','c3','c4','c0'];
+    const baseAccounts=DEFAULT_ACCOUNTS.map(a=>{
+      if(a.id==='wonjang') return {...a,pw:pWj};
+      if(a.id==='jesu1') return {...a,label:l1,pw:p1};
+      if(a.id==='jesu2') return {...a,label:l2,pw:p2};
+      if(a.id==='guest1') return {...a,label:lG1,pw:pG1};
+      if(a.id==='guest2') return {...a,label:lG2,pw:pG2};
+      return a;
+    });
+    const extraAccounts=collectedExtras.map((e,i)=>({id:e.id,label:e.label,pw:e.pw,c:BASE_COLORS[i%BASE_COLORS.length],extra:true}));
+    ACCOUNTS=[...baseAccounts,...extraAccounts];
+    extraRows=collectedExtras.map(e=>({...e}));
+    document.getElementById('adm-msg').style.color='#1D9E75';
+    document.getElementById('adm-msg').textContent='✅ 저장 완료!';
+    // 팝업 지속시간 저장
+    const durVal=parseInt(document.getElementById('adm-popup-dur').value||'0');
+    popupDurationSec=isNaN(durVal)||durVal<0?0:durVal;
+    localStorage.setItem('popup_duration_sec',String(popupDurationSec));
+    setTimeout(()=>{closeAdmin();renderApp();},900);
+  }catch(e){
+    document.getElementById('adm-msg').style.color='#e53e3e';
+    document.getElementById('adm-msg').textContent='저장 실패: '+e.message;
+  }
+}
+
+// STUN + TURN 서버 (외부망 대응)
+const RTC_CONFIG={iceServers:[
+  {urls:'stun:stun.l.google.com:19302'},
+  {urls:'stun:stun1.l.google.com:19302'},
+  {urls:'turn:openrelay.metered.ca:80',    username:'openrelayproject',credential:'openrelayproject'},
+  {urls:'turn:openrelay.metered.ca:443',   username:'openrelayproject',credential:'openrelayproject'},
+  {urls:'turns:openrelay.metered.ca:443',  username:'openrelayproject',credential:'openrelayproject'},
+]};
+
+let me=null,peer=null,selId=null,unread={},chatRef=null,badgeListeners={};
+let onlineUsers={};  // {uid: true/false}
+let presenceListeners=[];
+
+// 내 온라인 상태 Firebase에 등록
+function registerPresence(){
+  if(!me) return;
+  const ref=db.ref('presence/'+me);
+  ref.set(true);
+  ref.onDisconnect().remove();
+  // 브라우저 닫힐 때 대비 beforeunload
+  window.addEventListener('beforeunload',()=>ref.remove());
+}
+
+// 전체 사용자 온라인 상태 실시간 구독
+function startPresenceListener(){
+  stopPresenceListeners();
+  ACCOUNTS.forEach(u=>{
+    if(u.id===me) return;
+    const ref=db.ref('presence/'+u.id);
+    const handler=ref.on('value',snap=>{
+      onlineUsers[u.id]=!!snap.val();
+      // 사이드바 점 업데이트
+      const dot=document.getElementById('dot_'+u.id);
+      if(dot) dot.className='online-dot'+(onlineUsers[u.id]?' on':'');
+      // 선택된 상대면 통화버튼 상태도 갱신
+      if(peer===u.id) updateCallButtons();
+    });
+    presenceListeners.push({ref,handler});
+  });
+}
+function stopPresenceListeners(){
+  presenceListeners.forEach(({ref,handler})=>ref.off('value',handler));
+  presenceListeners=[];
+}
+
+function updateCallButtons(){
+  const online=peer?onlineUsers[peer]:false;
+  const btnS=document.getElementById('btn-call-start');
+  const btnV=document.getElementById('btn-vcall-start');
+  if(btnS) btnS.disabled=!online;
+  if(btnV) btnV.disabled=!online;
+  // 툴팁
+  const tip=online?'':'상대방이 오프라인입니다';
+  if(btnS) btnS.title=online?'음성통화':tip;
+  if(btnV) btnV.title=online?'영상통화':tip;
+}
+
+// WebRTC
+let pc=null;          // RTCPeerConnection
+let localStream=null; // 내 마이크/카메라
+let callRef=null;     // Firebase 통화 신호 ref
+let callListenerRef=null; // 수신 감지 ref
+let callState='idle'; // idle | calling | ringing | incall
+let callPeer=null;    // 통화 상대 id
+let callId=null;      // 현재 통화 id
+let isVideo=false;    // 현재 통화가 영상통화인지
+let videoTimer=null;  // 통화 시간 타이머
+let videoSeconds=0;   // 통화 경과 시간
+let callStartTs=0;    // 통화 시작 타임스탬프
+let pendingLogId=null;// 메모 저장 대기 중인 로그 ID
+let vMuted=false;     // 음소거 상태
+let vCamOff=false;    // 카메라 끔 상태
+
+function acct(id){return ACCOUNTS.find(a=>a.id===id);}
+function acctColorIdx(id){
+  const cidx={'c0':0,'c1':1,'c2':2,'c3':3,'c4':4};
+  const a=acct(id);
+  return a?( cidx[a.c]??0 ):0;
+}
+function mkey(a,b){return [a,b].sort().join('_vs_');}
+function ckey(a,b){return 'call_'+[a,b].sort().join('_vs_');}
+function esc(t){return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function tstr(ts){return new Date(ts).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}
+function dstr(ts){return new Date(ts).toLocaleDateString('ko-KR',{month:'long',day:'numeric'});}
+function lrKey(uid){return 'lr3_'+me+'_'+uid;}
+function getLR(uid){return parseInt(localStorage.getItem(lrKey(uid))||'0');}
+function setLR(uid){localStorage.setItem(lrKey(uid),String(Date.now()));}
+function stopChat(){if(chatRef){chatRef.off('value');chatRef=null;}}
+function stopBadge(){
+  for(const v of Object.values(badgeListeners)) v.ref.off('child_added',v.handler);
+  badgeListeners={};
+}
+function updateToggleBtn(){
+  const wrap=document.getElementById('wrap');
+  const btn=document.getElementById('toggle-btn');
+  if(!btn) return;
+  if(wrap.classList.contains('collapsed')){
+    btn.style.left='0px';
+  } else {
+    btn.style.left=wrap.offsetWidth+'px';
+  }
+}
+function toggleWrap(){
+  const wrap=document.getElementById('wrap');
+  wrap.classList.toggle('collapsed');
+  updateToggleBtn();
+}
+
+// ── 리사이즈 드래그 ──
+(function(){
+  const STORAGE_KEY='messenger_size';
+  function saveSize(w,h){
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify({w,h}));}catch(e){}
+  }
+  function loadSize(){
+    try{const s=localStorage.getItem(STORAGE_KEY);return s?JSON.parse(s):null;}catch(e){return null;}
+  }
+  function applySize(w,h){
+    const wrap=document.getElementById('wrap');
+    if(!wrap) return;
+    const minW=260,maxW=Math.min(700,window.innerWidth-30);
+    const minH=320,maxH=window.innerHeight;
+    w=Math.max(minW,Math.min(maxW,w));
+    h=Math.max(minH,Math.min(maxH,h));
+    wrap.style.width=w+'px';
+    wrap.style.height=h+'px';
+    updateToggleBtn();
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    const saved=loadSize();
+    if(saved) applySize(saved.w,saved.h);
+    else updateToggleBtn();
+
+    let dragType=null,startX,startY,startW,startH;
+    function onMouseMove(e){
+      if(!dragType) return;
+      const wrap=document.getElementById('wrap');
+      const dx=e.clientX-startX, dy=e.clientY-startY;
+      let nw=startW, nh=startH;
+      if(dragType==='e'||dragType==='se') nw=startW+dx;
+      if(dragType==='s'||dragType==='se') nh=startH+dy;
+      applySize(nw,nh);
+      document.getElementById('resize-'+dragType)?.classList.add('dragging');
+    }
+    function onMouseUp(){
+      if(!dragType) return;
+      const wrap=document.getElementById('wrap');
+      document.getElementById('resize-'+dragType)?.classList.remove('dragging');
+      saveSize(wrap.offsetWidth, wrap.offsetHeight);
+      dragType=null;
+      document.body.style.userSelect='';
+      document.body.style.cursor='';
+    }
+    function startDrag(type,e){
+      const wrap=document.getElementById('wrap');
+      dragType=type; startX=e.clientX; startY=e.clientY;
+      startW=wrap.offsetWidth; startH=wrap.offsetHeight;
+      document.body.style.userSelect='none';
+      document.body.style.cursor=type==='e'?'ew-resize':type==='s'?'ns-resize':'se-resize';
+      e.preventDefault();
+    }
+    document.getElementById('resize-e').addEventListener('mousedown',e=>startDrag('e',e));
+    document.getElementById('resize-s').addEventListener('mousedown',e=>startDrag('s',e));
+    document.getElementById('resize-se').addEventListener('mousedown',e=>startDrag('se',e));
+    document.addEventListener('mousemove',onMouseMove);
+    document.addEventListener('mouseup',onMouseUp);
+
+    // 터치 지원
+    function onTouchMove(e){
+      if(!dragType||!e.touches[0]) return;
+      onMouseMove({clientX:e.touches[0].clientX,clientY:e.touches[0].clientY});
+    }
+    function onTouchEnd(){onMouseUp();}
+    function startTouchDrag(type,e){
+      if(!e.touches[0]) return;
+      startDrag(type,{clientX:e.touches[0].clientX,clientY:e.touches[0].clientY,preventDefault:()=>e.preventDefault()});
+    }
+    document.getElementById('resize-e').addEventListener('touchstart',e=>startTouchDrag('e',e),{passive:false});
+    document.getElementById('resize-s').addEventListener('touchstart',e=>startTouchDrag('s',e),{passive:false});
+    document.getElementById('resize-se').addEventListener('touchstart',e=>startTouchDrag('se',e),{passive:false});
+    document.addEventListener('touchmove',onTouchMove,{passive:false});
+    document.addEventListener('touchend',onTouchEnd);
+
+    window.addEventListener('resize',()=>{
+      const wrap=document.getElementById('wrap');
+      applySize(wrap.offsetWidth,wrap.offsetHeight);
+    });
+  });
+})();
+function setMeBadge(l){
+  const el=document.getElementById('me-badge');
+  if(el) el.textContent=l?'['+l+']':'';
+  // 원장 로그인 시 관리 버튼 표시
+  const adminBtn=document.getElementById('admin-top-btn');
+  if(adminBtn){
+    if(isAdmin(me)){adminBtn.style.display='inline-block'; adminBtn.textContent='⚙️ 관리';}
+    else adminBtn.style.display='none';
+  }
+}function openModal(src){document.getElementById('modalImg').src=src;document.getElementById('imgModal').classList.add('show');}
+function closeModal(){document.getElementById('imgModal').classList.remove('show');}
+
+/* ════════════════════════════
+   WebRTC 통화
+════════════════════════════ */
+function callKey(){return ckey(me,callPeer);}
+
+async function startCall(withVideo=false){
+  if(callState!=='idle'||!peer){return;}
+  callPeer=peer;
+  callState='calling';
+  isVideo=withVideo;
+  updateCallBar((withVideo?'📹':'📞')+' 연결 중...','ringing');
+
+  // 미디어 획득 (카메라 없으면 음성만)
+  let constraints={audio:true, video:withVideo};
+  try{ localStream=await navigator.mediaDevices.getUserMedia(constraints); }
+  catch(e){
+    if(withVideo){
+      try{ localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false}); isVideo=false; }
+      catch(e2){ alert('마이크 접근 실패: '+e2.message); callState='idle'; updateCallBar(); return; }
+    } else {
+      alert('마이크 접근 실패: '+e.message); callState='idle'; updateCallBar(); return;
+    }
+  }
+
+  if(isVideo && localStream.getVideoTracks().length>0){
+    const lv=document.getElementById('localVideo');
+    if(lv) lv.srcObject=localStream;
+  }
+
+  pc=new RTCPeerConnection(RTC_CONFIG);
+  localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
+
+  // 원격 스트림 연결
+  pc.ontrack=e=>{
+    if(isVideo){
+      const rv=document.getElementById('remoteVideo');
+      if(rv) rv.srcObject=e.streams[0];
+    } else {
+      const audio=document.getElementById('remoteAudio');
+      if(audio) audio.srcObject=e.streams[0];
+    }
+  };
+
+  // ICE 후보 Firebase 전송
+  callId='call_'+Date.now();
+  const ckRef=db.ref('calls/'+callKey());
+  pc.onicecandidate=e=>{
+    if(e.candidate) ckRef.child('callerCandidates').push(e.candidate.toJSON());
+  };
+
+  // Offer 생성
+  const offer=await pc.createOffer();
+  await pc.setLocalDescription(offer);
+
+  // Firebase에 통화 요청 기록
+  await ckRef.set({
+    callId, caller:me, callee:callPeer,
+    offer:{type:offer.type, sdp:offer.sdp},
+    status:'calling', isVideo:isVideo, ts:Date.now()
+  });
+  callRef=ckRef;
+
+  // 상대방 응답 대기
+  callRef.on('value',async snap=>{
+    const d=snap.val();
+    if(!d) return;
+    if(d.status==='answered' && d.answer && pc.signalingState==='have-local-offer'){
+      await pc.setRemoteDescription(new RTCSessionDescription(d.answer));
+      callRef.child('calleeCandidates').on('child_added',cs=>{
+        pc.addIceCandidate(new RTCIceCandidate(cs.val())).catch(()=>{});
+      });
+      callState='incall';
+      if(isVideo){
+        showVideoOverlay(callPeer);
+      } else {
+        updateCallBar('📞 통화 중 ('+acct(callPeer)?.label+')', 'show');
+      }
+    }
+    if(d.status==='rejected'||d.status==='ended'){
+      if(isVideo) hangUpVideo(false); else hangUp(false);
+    }
+  });
+}
+
+// 수신 감지 시작
+function startCallListener(){
+  if(callListenerRef) callListenerRef.off();
+  // guest만 원장에서 오는 통화만 감지, 나머지는 전체
+  const others=(me==='guest1'||me==='guest2')
+    ? [ACCOUNTS.find(a=>a.id==='wonjang')].filter(Boolean)
+    : ACCOUNTS.filter(a=>a.id!==me);
+  others.forEach(u=>{
+    const ck=db.ref('calls/'+ckey(me,u.id));
+    ck.on('value',snap=>{
+      const d=snap.val();
+      if(!d||d.status!=='calling'||d.callee!==me) return;
+      if(callState!=='idle') return; // 이미 통화 중
+      // 30초 이상 된 요청 무시
+      if(Date.now()-d.ts>30000) return;
+      callPeer=u.id;
+      callId=d.callId;
+      callRef=ck;
+      callState='ringing';
+      showIncoming(u.id, !!(d.isVideo));
+    });
+  });
+}
+
+function showIncoming(uid, vid=false){
+  const el=document.getElementById('incoming');
+  document.getElementById('inc-name').textContent=(vid?'📹':'📞')+' '+acct(uid)?.label+'님이 '+(vid?'영상':'전화')+'중...';
+  el.classList.add('show');
+}
+function hideIncoming(){
+  document.getElementById('incoming').classList.remove('show');
+}
+
+async function acceptCall(){
+  hideIncoming();
+  if(callState!=='ringing'||!callRef) return;
+  callState='incall';
+
+  // 영상통화인지 확인
+  const snap0=await callRef.once('value');
+  const d0=snap0.val();
+  isVideo=!!(d0&&d0.isVideo);
+
+  let constraints={audio:true, video:isVideo};
+  try{ localStream=await navigator.mediaDevices.getUserMedia(constraints); }
+  catch(e){
+    if(isVideo){
+      try{ localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false}); isVideo=false; }
+      catch(e2){ alert('마이크 접근 실패: '+e2.message); rejectCall(); return; }
+    } else {
+      alert('마이크 접근 실패: '+e.message); rejectCall(); return;
+    }
+  }
+
+  if(isVideo && localStream.getVideoTracks().length>0){
+    const lv=document.getElementById('localVideo');
+    if(lv) lv.srcObject=localStream;
+  }
+
+  pc=new RTCPeerConnection(RTC_CONFIG);
+  localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
+  pc.ontrack=e=>{
+    if(isVideo){
+      const rv=document.getElementById('remoteVideo');
+      if(rv) rv.srcObject=e.streams[0];
+    } else {
+      const audio=document.getElementById('remoteAudio');
+      if(audio) audio.srcObject=e.streams[0];
+    }
+  };
+  pc.onicecandidate=e=>{
+    if(e.candidate) callRef.child('calleeCandidates').push(e.candidate.toJSON());
+  };
+
+  await pc.setRemoteDescription(new RTCSessionDescription(d0.offer));
+  callRef.child('callerCandidates').on('child_added',cs=>{
+    pc.addIceCandidate(new RTCIceCandidate(cs.val())).catch(()=>{});
+  });
+
+  const answer=await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  await callRef.update({answer:{type:answer.type,sdp:answer.sdp},status:'answered'});
+
+  if(isVideo){
+    showVideoOverlay(callPeer);
+  } else {
+    updateCallBar('📞 통화 중 ('+acct(callPeer)?.label+')','show');
+  }
+}
+
+function rejectCall(){
+  hideIncoming();
+  if(callRef) callRef.update({status:'rejected'});
+  cleanupCall();
+}
+
+function hangUp(writeDB=true){
+  hideIncoming();
+  if(writeDB && callRef) callRef.update({status:'ended'});
+  if(callPeer && callState==='incall'){
+    const k=mkey(me,callPeer);
+    const dur=callStartTs?Math.floor((Date.now()-callStartTs)/1000):0;
+    const endTs=Date.now();
+    db.ref('msgs/'+k).push({from:me,type:'calllog',text:'📞 통화 종료 ('+fmtDur(dur)+')',ts:endTs});
+    // 통화기록 Firebase 저장
+    const logRef=db.ref('calllogs').push({
+      caller:me, callee:callPeer,
+      callerLabel:acct(me)?.label||me, calleeLabel:acct(callPeer)?.label||callPeer,
+      type:'voice', startTs:callStartTs||endTs, endTs, duration:dur, memo:'', ts:endTs
+    });
+    pendingLogId=logRef.key;
+    cleanupCall();
+    if(isAdmin(me)) showMemoModal(callPeer, dur, false);
+  } else {
+    cleanupCall();
+  }
+}
+
+function cleanupCall(){
+  if(pc){pc.close();pc=null;}
+  if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}
+  const audio=document.getElementById('remoteAudio');
+  if(audio) audio.srcObject=null;
+  const rv=document.getElementById('remoteVideo');
+  if(rv) rv.srcObject=null;
+  const lv=document.getElementById('localVideo');
+  if(lv) lv.srcObject=null;
+  if(callRef){callRef.off();callRef=null;}
+  if(videoTimer){clearInterval(videoTimer);videoTimer=null;}
+  videoSeconds=0; vMuted=false; vCamOff=false; isVideo=false;
+  callStartTs=0;
+  callState='idle'; callPeer=null; callId=null;
+  updateCallBar();
+}
+
+
+// 시간 포맷
+function fmtDur(sec){
+  if(!sec) return '0초';
+  const m=Math.floor(sec/60), s=sec%60;
+  return m>0 ? m+'분 '+s+'초' : s+'초';
+}
+function fmtTs(ts){
+  return new Date(ts).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+}
+
+// 진료 메모 모달
+let _memoTarget=null;
+function showMemoModal(uid, dur, vid){
+  _memoTarget={uid,dur,vid};
+  const label=acct(uid)?.label||uid;
+  document.getElementById('memo-sub').textContent=
+    (vid?'📹 영상':'📞 음성')+' '+label+' · '+fmtDur(dur);
+  document.getElementById('memo-text').value='';
+  document.getElementById('memoModal').classList.add('show');
+  setTimeout(()=>document.getElementById('memo-text').focus(),100);
+}
+function saveMemo(doSave){
+  document.getElementById('memoModal').classList.remove('show');
+  if(doSave && pendingLogId){
+    const memo=document.getElementById('memo-text').value.trim();
+    if(memo) db.ref('calllogs/'+pendingLogId).update({memo});
+  }
+  pendingLogId=null; _memoTarget=null;
+}
+
+// 관리 탭 전환
+function switchAdminTab(tab){
+  document.querySelectorAll('.admin-tab').forEach((b,i)=>{
+    b.classList.toggle('on',
+      (i===0&&tab==='accounts')||(i===1&&tab==='logs')||(i===2&&tab==='chats')||(i===3&&tab==='firebase'));
+  });
+  document.getElementById('adm-pane-accounts').classList.toggle('on', tab==='accounts');
+  document.getElementById('adm-pane-logs').classList.toggle('on', tab==='logs');
+  document.getElementById('adm-pane-chats').classList.toggle('on', tab==='chats');
+  document.getElementById('adm-pane-firebase').classList.toggle('on', tab==='firebase');
+  if(tab==='logs') loadCallLogs();
+  if(tab==='chats') loadChatClearList();
+  if(tab==='firebase') openFBTab();
+}
+
+function loadChatClearList(){
+  const container=document.getElementById('chat-clear-list');
+  const msg=document.getElementById('chat-clear-msg');
+  if(msg) msg.textContent='';
+  // 원장↔각 유저 조합
+  const others=ACCOUNTS.filter(a=>a.id!=='wonjang');
+  container.innerHTML=others.map(u=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;background:#f7f7fb;border-radius:8px;padding:9px 12px;">
+      <span style="font-size:12px;font-weight:600;color:#1a1a2e;">원장 ↔ ${u.label}</span>
+      <button onclick="clearOneChat('${u.id}')"
+        style="background:#E53E3E;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;">
+        삭제
+      </button>
+    </div>`).join('');
+}
+
+async function clearOneChat(uid){
+  if(!confirm(`원장 ↔ ${acct(uid)?.label} 대화내용을 삭제하시겠습니까?\n이 작업은 취소할 수 없습니다.`)) return;
+  const msg=document.getElementById('chat-clear-msg');
+  try{
+    await db.ref('msgs/'+mkey('wonjang',uid)).remove();
+    if(msg){msg.style.color='#1D9E75';msg.textContent='✅ 삭제 완료: '+acct(uid)?.label;}
+    // 현재 열려 있는 채팅이면 화면 갱신
+    if(peer===uid||me===uid) renderApp();
+  }catch(e){
+    if(msg){msg.style.color='#E53E3E';msg.textContent='삭제 실패: '+e.message;}
+  }
+}
+
+async function clearAllChats(){
+  if(!confirm('⚠️ 모든 대화내용을 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.')) return;
+  const msg=document.getElementById('chat-clear-msg');
+  try{
+    await db.ref('msgs').remove();
+    if(msg){msg.style.color='#1D9E75';msg.textContent='✅ 전체 대화 삭제 완료';}
+    renderApp();
+  }catch(e){
+    if(msg){msg.style.color='#E53E3E';msg.textContent='삭제 실패: '+e.message;}
+  }
+}
+
+// 통화기록 로드
+function loadCallLogs(){
+  const el=document.getElementById('clog-list');
+  el.innerHTML='<div class="clog-empty">불러오는 중...</div>';
+  db.ref('calllogs').orderByChild('ts').limitToLast(50).once('value',snap=>{
+    const logs=[];
+    snap.forEach(ch=>logs.unshift({id:ch.key,...ch.val()}));
+    if(!logs.length){el.innerHTML='<div class="clog-empty">통화 기록이 없습니다.</div>';return;}
+    el.innerHTML=logs.map(l=>{
+      const isVid=l.type==='video';
+      const other=(l.caller==='wonjang')?l.calleeLabel:l.callerLabel;
+      return `<div class="clog-item">
+        <div class="clog-head">
+          <span class="clog-type${isVid?' video':''}">${isVid?'영상':'음성'}</span>
+          <span class="clog-name">${other}</span>
+          <span class="clog-date">${fmtTs(l.startTs)}</span>
+        </div>
+        <div class="clog-time">⏱ ${fmtDur(l.duration)}</div>
+        ${l.memo?`<div class="clog-memo">📝 ${l.memo}</div>`:''}
+      </div>`;
+    }).join('');
+  });
+}
+
+// 영상통화 오버레이 표시
+function showVideoOverlay(uid){
+  document.getElementById('video-peer-name').textContent=acct(uid)?.label||uid;
+  document.getElementById('video-status').textContent='';
+  document.getElementById('videoOverlay').classList.add('show');
+  callStartTs=Date.now();
+  videoSeconds=0;
+  if(videoTimer) clearInterval(videoTimer);
+  videoTimer=setInterval(()=>{
+    videoSeconds++;
+    const m=String(Math.floor(videoSeconds/60)).padStart(2,'0');
+    const s=String(videoSeconds%60).padStart(2,'0');
+    const el=document.getElementById('video-timer');
+    if(el) el.textContent=m+':'+s;
+  },1000);
+  // 버튼 상태 초기화
+  document.getElementById('vc-mute').textContent='🎤';
+  document.getElementById('vc-cam').textContent='📷';
+}
+
+function hideVideoOverlay(){
+  document.getElementById('videoOverlay').classList.remove('show');
+  if(videoTimer){clearInterval(videoTimer);videoTimer=null;}
+}
+
+function hangUpVideo(writeDB=true){
+  hideIncoming();
+  if(writeDB && callRef) callRef.update({status:'ended'});
+  if(callPeer && callState==='incall'){
+    const k=mkey(me,callPeer);
+    const dur=videoSeconds||0;
+    const endTs=Date.now();
+    db.ref('msgs/'+k).push({from:me,type:'calllog',text:'📹 영상통화 종료 ('+fmtDur(dur)+')',ts:endTs});
+    const logRef=db.ref('calllogs').push({
+      caller:me, callee:callPeer,
+      callerLabel:acct(me)?.label||me, calleeLabel:acct(callPeer)?.label||callPeer,
+      type:'video', startTs:callStartTs||endTs, endTs, duration:dur, memo:'', ts:endTs
+    });
+    pendingLogId=logRef.key;
+    hideVideoOverlay();
+    cleanupCall();
+    if(isAdmin(me)) showMemoModal(callPeer, dur, true);
+  } else {
+    hideVideoOverlay();
+    cleanupCall();
+  }
+}
+
+function toggleVMute(){
+  if(!localStream) return;
+  vMuted=!vMuted;
+  localStream.getAudioTracks().forEach(t=>t.enabled=!vMuted);
+  document.getElementById('vc-mute').textContent=vMuted?'🔇':'🎤';
+  document.getElementById('vc-mute').classList.toggle('active',vMuted);
+}
+
+function toggleVCam(){
+  if(!localStream) return;
+  vCamOff=!vCamOff;
+  localStream.getVideoTracks().forEach(t=>t.enabled=!vCamOff);
+  document.getElementById('vc-cam').textContent=vCamOff?'🚫':'📷';
+  document.getElementById('vc-cam').classList.toggle('active',vCamOff);
+}
+
+function updateCallBar(text='',cls=''){
+  const bar=document.getElementById('call-bar');
+  if(!bar) return;
+  // 통화 버튼 토글
+  const btnStart=document.getElementById('btn-call-start');
+  const btnVStart=document.getElementById('btn-vcall-start');
+  const btnEnd=document.getElementById('btn-call-end');
+  const active=!!text;
+  if(btnStart)  btnStart.style.display=active?'none':'flex';
+  if(btnVStart) btnVStart.style.display=active?'none':'flex';
+  if(btnEnd)    btnEnd.style.display=active?'flex':'none';
+  if(!text){bar.classList.remove('show','ringing');return;}
+  bar.textContent=text;
+  bar.className='';
+  bar.classList.add(cls==='ringing'?'ringing':'show');
+  if(cls==='show' && !isVideo && !callStartTs) callStartTs=Date.now();
+}
+
+/* ════════════════════════════
+   로그인
+════════════════════════════ */
+function showLogin(err){
+  stopChat();stopBadge();setMeBadge('');
+  document.getElementById('main-content').innerHTML=`
+  <div class="login-wrap"><div class="login-card">
+    <div style="font-size:28px;">💬</div>
+    <div class="login-title">메신저 로그인</div>
+    <div class="login-sub">소속을 선택하고<br>비밀번호를 입력하세요</div>
+    <div class="user-btns">
+      ${ACCOUNTS.map(a=>`<button class="user-btn${selId===a.id?' sel':''}" onclick="pickUser('${a.id}')">${a.label}</button>`).join('')}
+    </div>
+    <input class="pw-input" id="pw" type="password" placeholder="비밀번호"
+      autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <div class="err">${err||''}</div>
+    <button class="login-btn" onclick="doLogin()">로그인</button>
+  </div></div>`;
+  if(selId) setTimeout(()=>document.getElementById('pw')?.focus(),50);
+}
+function pickUser(id){
+  selId=id;
+  document.querySelectorAll('.user-btn').forEach(b=>b.classList.toggle('sel',b.textContent===acct(id)?.label));
+  const pwEl=document.getElementById('pw');
+  if(pwEl){pwEl.value='';pwEl.focus();}
+}
+// GUEST_IDS는 위에서 이미 선언됨 (로그인마다 대화 초기화)
+
+function doLogin(){
+  if(!selId){showLogin('소속을 선택해주세요.');return;}
+  const pw=document.getElementById('pw')?.value||'';
+  const a=acct(selId);
+  if(!a||pw!==a.pw){showLogin('비밀번호가 맞지 않습니다.');return;}
+  me=selId;localStorage.setItem('hangang_me',me);
+  unread={};setMeBadge(a.label);
+  registerPresence();
+  // guest1·guest2 → 원장과 자동 연결 (대화 내용 초기화 후)
+  const isGuest=(me==='guest1'||me==='guest2');
+  if(isGuest){
+    peer='wonjang';
+    const chatKey='msgs/'+mkey(me,'wonjang');
+    db.ref(chatKey).remove().then(()=>{
+      localStorage.removeItem(lrKey('wonjang'));
+      initUnreadThenRender();
+    }).catch(()=>initUnreadThenRender());
+  } else {
+    // 원장·접수1·접수2·대기모드 → 대화상대 선택 화면
+    peer=null;
+    initUnreadThenRender();
+  }
+}
+function doLogout(){
+  hangUp();stopChat();stopBadge();stopPresenceListeners();
+  if(me) db.ref('presence/'+me).remove();
+  me=null;peer=null;unread={};onlineUsers={};
+  localStorage.removeItem('hangang_me');showLogin();
+}
+
+function initUnreadThenRender(){
+  const others=ACCOUNTS.filter(a=>a.id!==me);
+  if(!others.length){sanitizePeer();renderApp();startBadgeListeners();startCallListener();startPresenceListener();return;}
+  let done=0;
+  others.forEach(u=>{
+    const lr=getLR(u.id);
+    db.ref('msgs/'+mkey(me,u.id)).once('value',snap=>{
+      let c=0;
+      snap.forEach(ch=>{const m=ch.val();if(m&&typeof m==='object'&&m.from===u.id&&m.ts>lr)c++;});
+      unread[u.id]=c;done++;
+      if(done===others.length){sanitizePeer();renderApp();startBadgeListeners();startCallListener();startPresenceListener();checkNotifBanner();}
+    });
+  });
+}
+
+/* ════════════════════════════
+   OS 알림 + 플로팅 팝업
+════════════════════════════ */
+// 알림음 (Web Audio API로 짧은 비프)
+function playNotifBeep(){
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.frequency.value=880;osc.type='sine';
+    gain.gain.setValueAtTime(0,ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.18,ctx.currentTime+0.01);
+    gain.gain.linearRampToValueAtTime(0,ctx.currentTime+0.18);
+    osc.start(ctx.currentTime);osc.stop(ctx.currentTime+0.2);
+  }catch(e){}
+}
+
+// OS 알림 권한 요청
+function requestNotifPerm(){
+  Notification.requestPermission().then(p=>{
+    document.getElementById('notif-banner').classList.remove('show');
+    if(p==='granted') localStorage.setItem('notif_ok','1');
+  });
+}
+
+// OS 알림 전송
+function sendOsNotif(fromLabel, msgText){
+  if(Notification.permission!=='granted') return;
+  const n=new Notification('💬 '+fromLabel, {
+    body: msgText||'새 메시지가 도착했습니다',
+    icon: '',
+    tag: 'hangang-msg-'+Date.now(),
+    silent: true // 비프는 우리가 직접 재생
+  });
+  n.onclick=()=>{window.focus();n.close();};
+  setTimeout(()=>n.close(), 5000);
+}
+
+// 플로팅 팝업 관리 (같은 sender는 하나만)
+const _fpopTimers={};
+let popupDurationSec=0; // 0 = 수동으로 닫을 때까지 유지 (관리자 설정)
+
+function loadPopupDuration(){
+  const v=parseInt(localStorage.getItem('popup_duration_sec')||'0');
+  popupDurationSec=isNaN(v)?0:v;
+}
+function showFloatPopup(fromId, msgObj){
+  const sender=acct(fromId);
+  if(!sender) return;
+  const popId='fpop_'+fromId;
+  const container=document.getElementById('floatPopups');
+
+  // 기존 팝업 제거
+  const existing=document.getElementById(popId);
+  if(existing) existing.remove();
+  if(_fpopTimers[fromId]) clearTimeout(_fpopTimers[fromId]);
+
+  // 메시지 내용 표시
+  let previewText='';
+  let previewClass='';
+  if(msgObj.type==='image'){previewText='📷 사진';previewClass=' img';}
+  else if(msgObj.type==='file'){previewText='📎 '+esc(msgObj.name||'파일');previewClass=' img';}
+  else{previewText=esc(msgObj.text||'');previewClass='';}
+
+  const div=document.createElement('div');
+  div.className='fpop';
+  div.id=popId;
+  div.innerHTML=`
+    <div class="fpop-head">
+      <div class="fav ${sender.c}">${sender.label.slice(0,2)}</div>
+      <div class="fname">${esc(sender.label)}</div>
+      <button class="fclose" onclick="closeFloatPopup('${fromId}')">✕</button>
+    </div>
+    <div class="fpop-preview${previewClass}">${previewText}</div>
+    <div class="fpop-reply">
+      <input type="text" id="freply_${fromId}" placeholder="답장 입력..."
+        onkeydown="if(event.key==='Enter')sendFloatReply('${fromId}')"/>
+      <button onclick="sendFloatReply('${fromId}')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M22 2L11 13M22 2L15 22 11 13 2 9 22 2Z"/></svg>
+      </button>
+    </div>
+    <button class="fpop-open" onclick="openChatFromPopup('${fromId}')">대화창 열기 →</button>
+  `;
+  container.appendChild(div);
+
+  // 지속시간 설정에 따라 자동 닫기 (0이면 수동 닫기)
+  if(popupDurationSec>0){
+    _fpopTimers[fromId]=setTimeout(()=>closeFloatPopup(fromId), popupDurationSec*1000);
+  }
+  // 포커스
+  setTimeout(()=>document.getElementById('freply_'+fromId)?.focus(), 100);
+}
+
+function closeFloatPopup(fromId){
+  const el=document.getElementById('fpop_'+fromId);
+  if(el) el.remove();
+  if(_fpopTimers[fromId]){clearTimeout(_fpopTimers[fromId]);delete _fpopTimers[fromId];}
+}
+
+function sendFloatReply(fromId){
+  const inp=document.getElementById('freply_'+fromId);
+  if(!inp) return;
+  const text=inp.value.trim(); if(!text) return;
+  db.ref('msgs/'+mkey(me,fromId)).push({from:me,text,ts:Date.now()});
+  inp.value='';
+  closeFloatPopup(fromId);
+}
+
+function openChatFromPopup(fromId){
+  closeFloatPopup(fromId);
+  // 메신저 창이 접혀있으면 펼치기
+  const wrap=document.getElementById('wrap');
+  if(wrap.classList.contains('collapsed')){wrap.classList.remove('collapsed');updateToggleBtn();}
+  selectPeer(fromId);
+  window.focus();
+}
+
+// 알림 배너 표시 여부 (로그인 후 1회)
+function checkNotifBanner(){
+  if(Notification.permission==='default' && !localStorage.getItem('notif_ok')){
+    document.getElementById('notif-banner').classList.add('show');
+  }
+}
+
+function startBadgeListeners(){
+  stopBadge();
+  const others=ACCOUNTS.filter(a=>a.id!==me);
+  const startTs=Date.now();
+  others.forEach(u=>{
+    const ref=db.ref('msgs/'+mkey(me,u.id));
+    const handler=ref.orderByChild('ts').startAt(startTs).on('child_added',snap=>{
+      const m=snap.val();
+      if(!m||typeof m!=='object') return;
+      if(m.from===u.id&&peer!==u.id){
+        unread[u.id]=(unread[u.id]||0)+1;
+        updateBadgeEl(u.id);
+        // 알림음 재생
+        playNotifBeep();
+        // OS 알림
+        const label=acct(u.id)?.label||u.id;
+        const msgText=m.type==='image'?'📷 사진':m.type==='file'?'📎 파일':(m.text||'새 메시지');
+        sendOsNotif(label, msgText);
+        // 플로팅 팝업
+        showFloatPopup(u.id, m);
+        // 부모 페이지(다른 탭 작업 중)에 알림 전달
+        try{
+          if(window.parent&&window.parent!==window){
+            window.parent.postMessage({
+              type:'HANGANG_NEW_MSG',
+              fromId: u.id,
+              fromLabel: label,
+              msgText: msgText,
+              unread: unread[u.id]||1
+            },'*');
+          }
+        }catch(e){}
+      }
+      if(m.from===u.id&&peer===u.id){unread[u.id]=0;updateBadgeEl(u.id);}
+    });
+    badgeListeners[u.id]={ref,handler};
+  });
+}
+function updateBadgeEl(uid){
+  const el=document.getElementById('bdg_'+uid);
+  if(!el) return;
+  const c=unread[uid]||0;
+  el.innerHTML=c>0?`<span class="badge">${c}</span>`:'';
+}
+
+/* ════════════════════════════
+   앱 화면
+════════════════════════════ */
+const ADMIN_IDS=['wonjang'];               // 원장만 전체 관리자
+const STAFF_IDS=[];                        // 직원 관리자 없음
+const GUEST_IDS=['jesu1','jesu2','guest1','guest2']; // 게스트 (원장과만 연결)
+function isAdmin(id){return ADMIN_IDS.includes(id);}
+function isStaff(id){return false;}
+function canManage(id){return isAdmin(id);}
+
+function renderApp(){
+  const myA=acct(me);
+  // 원장·접수 전체 목록, guest만 원장으로 제한
+  const others=(me==='guest1'||me==='guest2')
+    ? [ACCOUNTS.find(a=>a.id==='wonjang')].filter(Boolean)
+    : ACCOUNTS.filter(a=>a.id!==me);
+  const sideHtml=others.map(u=>`
+    <div class="uitem${peer===u.id?' active':''}" onclick="selectPeer('${u.id}')">
+      <div class="av-wrap">
+        <div class="av ${u.c}">${u.label.slice(0,2)}</div>
+        <span class="online-dot${onlineUsers[u.id]?' on':''}" id="dot_${u.id}"></span>
+      </div>
+      <div class="u-name">${u.label}</div>
+      <span id="bdg_${u.id}">${(unread[u.id]||0)>0?`<span class="badge">${unread[u.id]}</span>`:''}</span>
+    </div>`).join('');
+
+  const canCall=peer&&callState==='idle';
+  const inCall=callState==='incall'||callState==='calling';
+
+  const peerOnline=peer?onlineUsers[peer]:false;
+  const chatHtml=peer?`
+    <div class="chat-top">
+      <div class="av-wrap">
+        <div class="av ${acct(peer).c}">${acct(peer).label.slice(0,2)}</div>
+        <span class="online-dot${peerOnline?' on':''}" id="dot_top_${peer}"></span>
+      </div>
+      <div class="chat-top-name">${acct(peer).label} <span style="font-size:10px;font-weight:400;color:${peerOnline?'#1D9E75':'#aaa'}">${peerOnline?'● 접속중':'● 오프라인'}</span></div>
+      <button class="call-btn start" onclick="startCall(false)" title="${peerOnline?'음성통화':'오프라인 - 통화불가'}" id="btn-call-start" ${!peerOnline?'disabled':''} style="${inCall?'display:none':''}">
+            <svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg>
+           </button>
+      <button class="vcall-btn" onclick="startCall(true)" title="${peerOnline?'영상통화':'오프라인 - 통화불가'}" id="btn-vcall-start" ${!peerOnline?'disabled':''} style="${inCall?'display:none':''}">
+            <svg viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+           </button>
+      <button class="call-btn end" onclick="hangUp(true)" title="통화 종료" id="btn-call-end" style="${inCall?'':'display:none'}">
+            <svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg>
+           </button>
+    </div>
+    <div id="call-bar"></div>
+    <div class="msgs" id="msglist"></div>
+    <div id="prog-wrap" style="padding:0 8px;display:none;"><div class="upload-bar" id="prog-bar" style="width:0%"></div></div>
+    <div class="input-row">
+      <button class="fbtn" onclick="document.getElementById('fileInput').click()" title="파일 첨부">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#534AB7" stroke-width="2">
+          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.41 17.41a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+        </svg>
+      </button>
+      <input type="file" id="fileInput" style="display:none" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" onchange="uploadFile(this)"/>
+      <input type="text" id="minput" placeholder="메시지 입력..." autocomplete="off"
+        onkeydown="if(event.key==='Enter')sendMsg()"/>
+      <button class="sbtn" onclick="sendMsg()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M22 2L11 13M22 2L15 22 11 13 2 9 22 2Z"/></svg>
+      </button>
+    </div>`
+  :`<div class="empty">←<span>대화 상대 선택</span></div>`;
+
+  document.getElementById('main-content').innerHTML=`
+    <div id="app">
+      <div class="sidebar">
+        <div class="sidebar-top">
+          <div class="av ${myA.c}">${myA.label.slice(0,2)}</div>
+          <div class="me-label">${myA.label}</div>
+          <button class="logout-btn" onclick="doLogout()">나가기</button>
+        </div>
+        <div class="user-list">${sideHtml}</div>
+      </div>
+      <div class="chat-area">${chatHtml}</div>
+    </div>`;
+
+  if(peer){startChatListener();setTimeout(()=>document.getElementById('minput')?.focus(),100);}
+  if(inCall) updateCallBar(callState==='calling'?'📞 연결 중...':'📞 통화 중 ('+acct(callPeer)?.label+')', callState==='calling'?'ringing':'show');
+}
+
+function startChatListener(){
+  stopChat();
+  chatRef=db.ref('msgs/'+mkey(me,peer));
+  chatRef.on('value',snap=>{
+    const msgs=[];
+    snap.forEach(ch=>{const m=ch.val();if(m&&typeof m==='object'&&m.from&&m.ts)msgs.push(m);});
+    msgs.sort((a,b)=>a.ts-b.ts);
+    renderMsgs(msgs);
+    setLR(peer);unread[peer]=0;updateBadgeEl(peer);
+  });
+}
+
+function renderMsgs(msgs){
+  const list=document.getElementById('msglist');
+  if(!list) return;
+  const pA=acct(peer);
+  const myIdx=acctColorIdx(me);
+  const peerIdx=acctColorIdx(peer);
+  const myA=acct(me);
+  let html='',lastD='';
+  for(const m of msgs){
+    const d=dstr(m.ts);
+    if(d!==lastD){html+=`<div class="dsep">${d}</div>`;lastD=d;}
+    const mine=m.from===me;
+    // 보낸 사람이 me도 peer도 아닌 경우(그룹 등) 대비
+    const senderA=acct(m.from);
+    const senderIdx=acctColorIdx(m.from);
+    let content='';
+    if(m.type==='image') content=`<img class="msg-img" src="${esc(m.url)}" onclick="openModal('${esc(m.url)}')" alt="이미지"/>`;
+    else if(m.type==='file') content=`<div class="msg-file">📎 <a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.name)}</a></div>`;
+    else if(m.type==='calllog') content=esc(m.text||'📞 통화');
+    else content=esc(m.text||'');
+    const isLog=m.type==='calllog';
+    if(isLog){
+      html+=`<div class="dsep">${content} · ${tstr(m.ts)}</div>`;
+    } else {
+      const bubbleCls=mine?`bc${myIdx}`:`rc${senderIdx}`;
+      const nameColor=mine?`color:#534AB7`:`color:${['#3C3489','#0b6b4a','#922b21','#1a5276','#784212'][senderIdx]||'#555'}`;
+      html+=`<div class="mrow${mine?' mine':''}">
+        ${!mine?`<div class="av sm ${(senderA||pA).c}">${(senderA||pA).label.slice(0,2)}</div>`:''}
+        <div>
+          <div class="sender-name" style="text-align:${mine?'right':'left'};${nameColor}">${mine?(myA?.label||me):(senderA?.label||m.from)}</div>
+          <div class="mt" style="text-align:${mine?'right':'left'}">${tstr(m.ts)}</div>
+          <div class="bubble ${bubbleCls}">${content}</div>
+        </div>
+      </div>`;
+    }
+  }
+  if(!html) html=`<div class="empty">💬<span>${pA.label}과(와) 대화 시작</span></div>`;
+  list.innerHTML=html;
+  list.scrollTop=list.scrollHeight;
+}
+
+function selectPeer(uid){stopChat();peer=uid;unread[uid]=0;setLR(uid);renderApp();}
+function sanitizePeer(){
+  // guest만 원장과 자동 연결, 나머지는 peer 그대로
+  if(me==='guest1'||me==='guest2'){
+    peer='wonjang';
+  }
+  // extra 계정도 guest처럼 원장과 자동 연결
+  const myAcct=acct(me);
+  if(myAcct?.extra) peer='wonjang';
+}
+
+function sendMsg(){
+  const inp=document.getElementById('minput');
+  if(!inp||!peer) return;
+  const text=inp.value.trim(); if(!text) return;
+  inp.value='';
+  db.ref('msgs/'+mkey(me,peer)).push({from:me,text,ts:Date.now()});
+  // 원장·접수1·접수2는 메시지 전송 후 자동으로 대기(peer=null) 상태로 전환
+  const isStaff=(me==='wonjang'||me==='jesu1'||me==='jesu2');
+  if(isStaff){
+    setTimeout(()=>{stopChat();peer=null;renderApp();},300);
+  } else {
+    inp.focus();
+  }
+}
+
+function uploadFile(input){
+  const file=input.files[0]; if(!file||!peer) return;
+  input.value='';
+  const isImage=file.type.startsWith('image/');
+  const path='messenger/'+mkey(me,peer)+'/'+Date.now()+'_'+file.name;
+  const ref=storage.ref(path);
+  const task=ref.put(file);
+  const progWrap=document.getElementById('prog-wrap');
+  const progBar=document.getElementById('prog-bar');
+  if(progWrap) progWrap.style.display='block';
+  task.on('state_changed',
+    snap=>{const pct=Math.round(snap.bytesTransferred/snap.totalBytes*100);if(progBar)progBar.style.width=pct+'%';},
+    err=>{if(progWrap)progWrap.style.display='none';alert('업로드 실패: '+err.message);},
+    async()=>{
+      const url=await task.snapshot.ref.getDownloadURL();
+      if(progWrap)progWrap.style.display='none';
+      if(progBar)progBar.style.width='0%';
+      db.ref('msgs/'+mkey(me,peer)).push({from:me,ts:Date.now(),type:isImage?'image':'file',url,name:file.name});
+    }
+  );
+}
+
+// ── Firebase 설정 탭 ──
+function openFBTab(){
+  const cfg=loadFBConfig();
+  document.getElementById('adm-clinic-name').value=cfg.clinicName||'';
+  document.getElementById('adm-fb-url').value=cfg.databaseURL||'';
+  document.getElementById('adm-fb-bucket').value=cfg.storageBucket||'';
+  document.getElementById('adm-fb-url').disabled=true;
+  document.getElementById('adm-fb-bucket').disabled=true;
+  document.getElementById('fb-current-name').textContent=cfg.clinicName||'—';
+  document.getElementById('fb-current-url').textContent=cfg.databaseURL||'—';
+  document.getElementById('fb-current-bucket').textContent=cfg.storageBucket||'—';
+  document.getElementById('adm-fb-msg').style.color='#888';
+  document.getElementById('adm-fb-msg').textContent='🔒 이 파일은 ped DB로 고정되어 있습니다 (변경 불가).';
+}
+function saveFBSettings(){
+  const name=(document.getElementById('adm-clinic-name').value||'').trim();
+  if(!name){
+    const m=document.getElementById('adm-fb-msg');
+    m.style.color='#e53e3e'; m.textContent='병원/그룹 이름을 입력해주세요.'; return;
+  }
+  // ⚠️ 이 파일은 ped DB로 고정: URL/Bucket은 입력값을 무시하고 항상 기본값 사용
+  saveFBConfig({clinicName:name, databaseURL:DEFAULT_FB_CONFIG.databaseURL, storageBucket:DEFAULT_FB_CONFIG.storageBucket});
+  // 로컬 로그인 정보 초기화 (다른 그룹이면 계정이 다를 수 있음)
+  localStorage.removeItem('hangang_me');
+  const m=document.getElementById('adm-fb-msg');
+  m.style.color='#1D9E75'; m.textContent='✅ 저장 완료! 페이지를 재시작합니다...';
+  setTimeout(()=>location.reload(), 1200);
+}
+function resetFBSettings(){
+  if(!confirm('기본 Firebase 설정(한강의원)으로 초기화하시겠습니까?')) return;
+  localStorage.removeItem('fb_config');
+  localStorage.removeItem('hangang_me');
+  location.reload();
+}
+
+/* ── 초기화 ── */
+(async()=>{
+  await loadAccountsFromDB();
+  loadPopupDuration();
+  // 실시간으로 계정 변경 감지
+  db.ref('admin/accounts').on('value',snap=>{
+    const d=snap.val();
+    if(!d) return;
+    const base=DEFAULT_ACCOUNTS.map(a=>{
+      if(a.id==='wonjang'&&d.wonjang) return {...a, pw:d.wonjang.pw||a.pw};
+      if(a.id==='jesu1'&&d.jesu1) return {...a, label:d.jesu1.label||a.label, pw:d.jesu1.pw||a.pw};
+      if(a.id==='jesu2'&&d.jesu2) return {...a, label:d.jesu2.label||a.label, pw:d.jesu2.pw||a.pw};
+      if(a.id==='guest1'&&d.guest1) return {...a, label:d.guest1.label||a.label, pw:d.guest1.pw||a.pw};
+      if(a.id==='guest2'&&d.guest2) return {...a, label:d.guest2.label||a.label, pw:d.guest2.pw||a.pw};
+      return a;
+    });
+    const BASE_COLORS=['c1','c2','c3','c4','c0'];
+    const extras=d.extras?Object.entries(d.extras).map(([id,v],i)=>({id,label:v.label||id,pw:v.pw||'',c:BASE_COLORS[i%BASE_COLORS.length],extra:true})):[];
+    ACCOUNTS=[...base,...extras];
+    // 로그인 화면이면 버튼 이름 갱신
+    if(!me) showLogin();
+    else if(document.querySelector('.sidebar')) renderApp();
+  });
+  const saved=localStorage.getItem('hangang_me');
+  if(saved&&acct(saved)){me=saved;setMeBadge(acct(saved).label);unread={};registerPresence();initUnreadThenRender();checkNotifBanner();}
+  else showLogin();
+})();
+</script>
+</body>
+</html>
