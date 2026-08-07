@@ -1051,7 +1051,7 @@ function renderCal(){
 }
 
 // ══ 진료 탭 ══════════════════════════════════════════
-var _currentChart=null,_patientDrugs=[],_drugsChanged=false,_currentDaeriList=[];
+var _currentChart=null,_patientDrugs=[],_drugsChanged=false,_currentDaeriList=[],_patientDrugComment='';
 
 window.addEventListener('DOMContentLoaded',function(){
   checkKey();
@@ -1071,6 +1071,7 @@ function clearPatient(){
   document.getElementById('visitForm').classList.add('hidden');
   document.getElementById('searchStatus').classList.add('hidden');
   _currentChart=null;
+  _patientDrugComment='';
 }
 
 function toggleChartEdit(show){}
@@ -1167,6 +1168,9 @@ async function searchPatient(){
     _currentChart=chartNo;
     _patientDrugs=drugList.filter(function(d){return d.drug_code||d.drug_name;});
     _drugsChanged=false;
+    // 약물 코멘트 (comment_d) — 저장된 행 중 값이 있는 것을 사용
+    var cmtRow=drugList.find(function(d){return d.comment_d;});
+    _patientDrugComment=cmtRow?cmtRow.comment_d:'';
     // 약물 updated_at → 날짜 뱃지 초기값
     var latestDrug = drugList.reduce(function(a,b){ return (a.updated_at||a.created_at||'') > (b.updated_at||b.created_at||'') ? a : b; }, {});
     var drugTs = latestDrug.updated_at || latestDrug.created_at || '';
@@ -1327,7 +1331,7 @@ async function saveDrugsOnly(){
   try{
     await sbDelete('drugs',{chart_no:_currentChart});
     if(_patientDrugs.length>0){
-      var rows=_patientDrugs.map(function(d){return{chart_no:_currentChart,drug_code:d.drug_code||'',drug_name:d.drug_name||'',dose:d.dose||'',daily_freq:d.daily_freq||'',days:d.days||'',method:d.method||''};});
+      var rows=_patientDrugs.map(function(d){return{chart_no:_currentChart,drug_code:d.drug_code||'',drug_name:d.drug_name||'',dose:d.dose||'',daily_freq:d.daily_freq||'',days:d.days||'',method:d.method||'',comment_d:_patientDrugComment||''};});
       await sbInsert('drugs',rows);
     }
     _drugsChanged=false;
@@ -1415,7 +1419,7 @@ async function saveVisitAll(){
     if(_drugsChanged){
       await sbDelete('drugs',{chart_no:_currentChart});
       if(_patientDrugs.length>0){
-        var rows=_patientDrugs.map(function(d){return{chart_no:_currentChart,drug_code:d.drug_code||'',drug_name:d.drug_name||'',dose:d.dose||'',daily_freq:d.daily_freq||'',days:d.days||'',method:d.method||''};});
+        var rows=_patientDrugs.map(function(d){return{chart_no:_currentChart,drug_code:d.drug_code||'',drug_name:d.drug_name||'',dose:d.dose||'',daily_freq:d.daily_freq||'',days:d.days||'',method:d.method||'',comment_d:_patientDrugComment||''};});
         saves.push(sbInsert('drugs',rows));
       }
     }
@@ -1555,8 +1559,18 @@ function renderPatientDrugs(){
     });
   }
   html+='</tbody></table></div></div>';
+
+  // ── 코멘트 (comment_d) ──
+  var cmtVal=(_patientDrugComment||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  html+='<div style="margin-top:10px;">'
+    +'<label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text2);">코멘트</label>'
+    +'<textarea id="drugCommentInput" placeholder="예: 26/7 스리반 추가" style="width:100%;min-height:48px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;" oninput="onDrugCommentChange(this.value)">'+cmtVal+'</textarea>'
+    +'</div>';
+
   el.innerHTML=html;
 }
+
+function onDrugCommentChange(v){_patientDrugComment=v;_drugsChanged=true;}
 
 function moveDrug(i, dir) {
   var j = i + dir;
