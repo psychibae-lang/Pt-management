@@ -5227,7 +5227,7 @@ async function loadDrugView() {
       tr.appendChild(tdImg);
 
       // 하루총용량
-      var totalDose = (function(dose,freq){var dv=parseFloat(dose),fv=parseFloat(freq);return(!isNaN(dv)&&!isNaN(fv))?(dv*fv):((dose||'')+(freq?'×'+freq:''));})(d.dose,d.daily_freq);
+      var totalDose = d.dose || '';
       var tdTotal = document.createElement('td');
       tdTotal.style.cssText = 'padding:3px 10px;border-bottom:1px solid #f0f2f8;text-align:center;background:#fffbea;';
       tdTotal.innerHTML = '<span style="font-size:15px;font-weight:800;color:#b45309;">'+totalDose+'</span>';
