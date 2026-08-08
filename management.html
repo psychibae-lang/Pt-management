@@ -979,7 +979,7 @@ async function claudeCall(body){var r=await fetch(PROXY,{method:'POST',headers:{
 async function sheetPost(body){body._sheet_action=true;var r=await fetch(PROXY,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+ANON_KEY},body:JSON.stringify(body)});return r.json();}
 
 // ── 탭 ───────────────────────────────────────────────
-var TABS=['links','patient','appt','drug','search','clin','proxy','selcare','sms','phone','stats','drugview','notice','messenger','memo'];
+var TABS=['links','patient','appt','drug','search','clin','proxy','selcare','sms','phone','stats','drugview','notice','memo'];
 // ── 약물 일괄 입력 ──────────────────────────────────
 function applyBulkFill(){
   var dose=document.getElementById('bulkDose')?document.getElementById('bulkDose').value.trim():'';
@@ -6668,8 +6668,8 @@ body.trh-resizing { user-select: none; }
 <script>
 (function(){
   var STORE_KEY = 'tabResize_mgmt_v1';
-  var TABS = ['links','patient','appt','drug','search','clin','proxy','selcare','sms','phone','stats','drugview','notice','messenger','memo'];
-  var NO_WIDTH = ['messenger','search']; // 전체폭 탭은 가로 핸들 숨김
+  var TABS = ['links','patient','appt','drug','search','clin','proxy','selcare','sms','phone','stats','drugview','notice','memo'];
+  var NO_WIDTH = ['search']; // 전체폭 탭은 가로 핸들 숨김
 
   function loadSizes(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); }catch(e){return {};} }
   function saveSizes(s){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(s)); }catch(e){} }
