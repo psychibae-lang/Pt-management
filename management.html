@@ -5694,6 +5694,9 @@ function mmEsc(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').r
     <button onclick="bpSaveRecord()" id="bpBtnSave" style="background:#2d5016;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;margin-bottom:2px;">💾 저장</button>
   </div>
 
+  <!-- 마지막 저장 안내 -->
+  <div id="bpLastRecordInfo" style="display:none;background:#eef6ff;border:1.5px solid #bcdcff;border-radius:8px;padding:9px 14px;margin-bottom:10px;font-size:12px;color:#1a5276;"></div>
+
   <!-- 부족 경고 -->
   <div id="bpShortageAlert" style="display:none;background:#fdecea;border:1.5px solid #f5c6c2;border-radius:8px;padding:9px 14px;margin-bottom:10px;font-size:12px;color:#c0392b;"></div>
 
@@ -5992,19 +5995,72 @@ function bpSetDbStatus(type, txt) {
 }
 
 // ── 초기화 ──
-window.bpInit = function() {
+window.bpInit = async function() {
   if(bpInited) return;
   bpInited = true;
-  // 오늘 날짜
+  // 오늘 날짜 (마지막 기록이 없을 때의 기본값)
   var today = new Date().toISOString().slice(0,10);
   document.getElementById('bpCheckDate').value = today;
-  // 초기 상태
+  // 초기 상태 (마지막 기록이 없을 때의 기본값)
   bpData.numItems.forEach(function(i){bpState.nums[i.id]=i.def;});
   bpData.toggleItems.forEach(function(i){bpState.toggles[i.id]='ok';});
   // 메인앱 Supabase 바로 사용 가능
-  bpLoadConfig();
+  await bpLoadConfig();
   bpSetDbStatus('ok','● 연결됨');
+  // 마지막으로 저장된 점검 기록을 불러와 초기 화면에 채워줌
+  await bpLoadLatestRecord();
 };
+
+// ── 마지막 저장 기록 불러오기 (초기 화면에 표시) ──
+async function bpLoadLatestRecord(){
+  var records = [];
+  var client = bpSb();
+  if(client){
+    try{
+      var r = await client.from('check_records').select('*')
+        .order('check_date',{ascending:false}).order('created_at',{ascending:false}).limit(1);
+      if(r.data) records = r.data;
+    }catch(e){}
+  }
+  if(!records.length){
+    try{
+      var local = JSON.parse(localStorage.getItem('bp_check_records')||'[]');
+      if(local.length){
+        local.sort(function(a,b){return new Date(b.created_at||b.check_date)-new Date(a.created_at||a.check_date);});
+        records = [local[0]];
+      }
+    }catch(e){}
+  }
+  if(!records.length) return; // 저장된 기록이 없으면 기본값(오늘 날짜) 유지
+
+  var rec = records[0];
+  // 최근 기록의 수량/상태 값을 현재 화면 상태에 반영 (신규 추가된 품목은 기본값 유지)
+  if(rec.nums){
+    bpData.numItems.forEach(function(i){
+      if(rec.nums[i.id]!==undefined) bpState.nums[i.id]=rec.nums[i.id];
+    });
+  }
+  if(rec.toggles){
+    bpData.toggleItems.forEach(function(i){
+      if(rec.toggles[i.id]!==undefined) bpState.toggles[i.id]=rec.toggles[i.id];
+    });
+  }
+  // 점검일 필드에 마지막 저장 날짜를 표시 (수정 후 원하는 날짜로 지정해 저장 가능)
+  var dateEl = document.getElementById('bpCheckDate');
+  if(dateEl && rec.check_date) dateEl.value = rec.check_date;
+  var memoEl = document.getElementById('bpMemoField');
+  if(memoEl) memoEl.value = rec.memo || '';
+  var inspSel = document.getElementById('bpInspectorSelect');
+  if(inspSel && rec.inspector) inspSel.value = rec.inspector;
+
+  var infoEl = document.getElementById('bpLastRecordInfo');
+  if(infoEl){
+    infoEl.style.display='';
+    infoEl.innerHTML = 'ℹ️ <b>'+bpEsc(rec.check_date)+'</b> ('+bpEsc(rec.inspector||'—')+') 마지막 점검 기록을 불러왔습니다. 내용을 확인·수정한 뒤, 점검일을 지정하고 저장하세요.';
+  }
+
+  bpRenderAll();
+}
 
 // ── 렌더 ──
 function bpRenderAll(){
