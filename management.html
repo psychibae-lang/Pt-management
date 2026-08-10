@@ -1731,11 +1731,24 @@ async function saveDrugs(){
   var cn=document.getElementById('chartNo').value.trim();
   var btn=document.querySelector('#resultCard .btn-success');btn.disabled=true;btn.textContent='저장 중...';
   try{
+    // 기존 코멘트(comment_d) 보존 — 교체 저장 시 사라지지 않도록 미리 백업
+    var existingComment='';
+    try{
+      var existRows=await sbGet('drugs',{chart_no:'eq.'+cn,select:'comment_d'});
+      if(Array.isArray(existRows)){
+        var cmtRow=existRows.find(function(r){return r.comment_d;});
+        if(cmtRow) existingComment=cmtRow.comment_d;
+      }
+    }catch(e){}
     if(_replaceMode)await sbDelete('drugs',{chart_no:cn});
-    var rows=drugs.map(function(d){return{chart_no:cn,drug_code:d.drug_code,drug_name:d.drug_name,dose:d.dose,daily_freq:d.daily_freq,days:d.days,method:d.method};});
+    var rows=drugs.map(function(d,idx){
+      var row={chart_no:cn,drug_code:d.drug_code,drug_name:d.drug_name,dose:d.dose,daily_freq:d.daily_freq,days:d.days,method:d.method};
+      if(idx===0 && existingComment) row.comment_d=existingComment;
+      return row;
+    });
     await sbInsert('drugs',rows);
     _replaceMode=false;_replaceChart=null;
-    setStatus('drugSaveStatus','success','✓ '+drugs.length+'개 저장됨');
+    setStatus('drugSaveStatus','success','✓ '+drugs.length+'개 저장됨'+(existingComment?' (코멘트 유지됨)':''));
   }catch(err){setStatus('drugSaveStatus','error','실패: '+err.message);}
   finally{btn.disabled=false;btn.innerHTML='&#128190; 저장';}
 }
