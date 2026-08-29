@@ -438,14 +438,14 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
         <button id="btnSaveExtra" onclick="saveExtraOnly()" class="btn btn-success" style="font-size:12px;padding:6px 12px;">저장</button>
       </div>
       <!-- 대리처방: daeri 테이블 조회 결과 표시 -->
-      <div style="margin-bottom:10px;">
+      <div id="pDaeriWrap" style="margin-bottom:10px;border-left:4px solid transparent;padding-left:8px;transition:border-color .15s;">
         <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text2);">대리처방 신청 내역</label>
         <div id="pDaeriList" style="background:#fef9ec;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;min-height:40px;font-size:12px;">
           <span style="color:#aaa;">조회 중...</span>
         </div>
       </div>
       <!-- 선택의료 토글은 그대로 유지 -->
-      <div>
+      <div id="pSelCareWrap" style="border-left:4px solid transparent;padding-left:8px;transition:border-color .15s;">
         <label style="display:block;margin-bottom:5px;font-size:11px;">선택의료</label>
         <div class="toggle-group" id="pSelCare" data-val="N">
           <button class="toggle-btn toggle-y" onclick="toggleSelCare('Y')">예</button>
@@ -1221,6 +1221,7 @@ async function searchPatient(){
     if(selDateWrap) selDateWrap.style.display=selVal==='Y'?'block':'none';
     var selDateInput=document.getElementById('pSelCareDate');
     if(selDateInput) selDateInput.value=(visit&&visit.proxy_rx&&selVal==='Y')?visit.proxy_rx:'';
+    applySelCareStyle(selVal);
     // 대리처방 daeri 목록 렌더
     _currentDaeriList=daeriList;
     renderDaeriList(daeriList);
@@ -1248,6 +1249,8 @@ function openVisitForm(){
 function renderDaeriList(list){
   var el=document.getElementById('pDaeriList');
   if(!el) return;
+  var wrap=document.getElementById('pDaeriWrap');
+  if(wrap) wrap.style.borderLeftColor=(list&&list.length)?'#3b82f6':'transparent';
   if(!list||!list.length){
     el.innerHTML='<span style="color:#aaa;font-size:12px;">대리처방 신청 내역 없음</span>';
     return;
@@ -1287,6 +1290,24 @@ function toggleSelCare(val){
   var wrap=document.getElementById('pSelCareDateWrap');
   if(wrap) wrap.style.display=val==='Y'?'block':'none';
   if(val==='N'){var d=document.getElementById('pSelCareDate');if(d)d.value='';}
+  applySelCareStyle(val);
+}
+function applySelCareStyle(val){
+  var isY=val==='Y';
+  var wrap=document.getElementById('pSelCareWrap');
+  if(wrap) wrap.style.borderLeftColor=isY?'#ec4899':'transparent';
+  var btn=document.getElementById('btnSaveSelcareOnly');
+  if(btn){
+    if(isY){
+      btn.style.background='#ec4899';
+      btn.style.borderColor='#ec4899';
+      btn.style.color='#fff';
+    }else{
+      btn.style.background='';
+      btn.style.borderColor='';
+      btn.style.color='';
+    }
+  }
 }
 
 function toggleVisitDateEdit(){
