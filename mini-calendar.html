@@ -14,13 +14,27 @@
   .cal-wrap { display:flex; flex-direction:column; align-items:center; gap:12px; }
   .cal-title { font-size:18px; font-weight:800; color:#1a1a1a; }
 
+  :root {
+    --cal-pad-y: 5px;
+    --cal-month-mb: 14px;
+    --cal-dow-pb: 5px;
+  }
   .cal-box {
-    width:260px; height:620px; min-width:200px; min-height:340px;
-    max-width:560px; max-height:1500px;
-    resize:both; overflow:auto;
+    width:260px; height:620px; min-width:200px; min-height:280px;
+    max-width:none;
+    position:relative; overflow:auto;
     border:1px solid #e4e8f0; border-radius:12px; background:#fff;
     padding:12px 12px 8px 12px;
     box-shadow:0 2px 10px rgba(0,0,0,0.05);
+  }
+  .cal-resize-handle {
+    position:absolute; right:0; bottom:0; width:22px; height:22px;
+    cursor:nwse-resize; touch-action:none;
+    background:
+      linear-gradient(135deg, transparent 0 45%, #c7cede 45% 55%, transparent 55% 100%),
+      linear-gradient(135deg, transparent 0 65%, #c7cede 65% 75%, transparent 75% 100%);
+    border-radius:0 0 10px 0;
+    z-index:5;
   }
   .cal-nav { display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:10px; }
   .cal-nav button {
@@ -31,16 +45,16 @@
   .cal-nav button:hover { background:#f4f6fb; border-color:#c7d2fe; color:#4338ca; }
   .cal-nav-label { font-size:14px; color:#888; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-  .cal-month { margin-bottom:14px; }
+  .cal-month { margin-bottom:var(--cal-month-mb); }
   .cal-month-hd {
     background:linear-gradient(135deg,#7c3aed,#6d28d9); color:#fff; text-align:center;
     font-weight:900; font-size:20px; padding:9px 0; border-radius:7px; margin-bottom:6px;
   }
   .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; text-align:center; }
-  .cal-dow { font-size:15px; font-weight:800; color:#888; padding:3px 0 5px; }
+  .cal-dow { font-size:15px; font-weight:800; color:#888; padding:3px 0 var(--cal-dow-pb); }
   .cal-dow.sun { color:#ef4444; }
   .cal-dow.sat { color:#3b82f6; }
-  .cal-day { font-size:21px; font-weight:800; padding:5px 0; border-radius:5px; color:#222; }
+  .cal-day { font-size:21px; font-weight:800; padding:var(--cal-pad-y) 0; border-radius:5px; color:#222; }
   .cal-day.other { color:#dcdcdc; }
   .cal-day.sun { color:#ef4444; }
   .cal-day.holiday { color:#ef4444; font-weight:900; }
@@ -52,7 +66,6 @@
 <body>
 
 <div class="cal-wrap">
-  <div class="cal-title">📅 미니 달력</div>
   <div class="cal-box" id="cal-box">
     <div class="cal-nav">
       <button onclick="calShift(-1)" title="이전 달">‹</button>
@@ -61,6 +74,7 @@
       <button onclick="calShift(1)" title="다음 달">›</button>
     </div>
     <div id="cal-months"></div>
+    <div class="cal-resize-handle" id="cal-resize-handle"></div>
   </div>
   <div class="cal-hint">우측 하단 모서리를 드래그하면 크기를 조절할 수 있어요</div>
 </div>
@@ -164,10 +178,89 @@ function calRender() {
   document.getElementById('cal-nav-label').textContent = yF+'.'+(mF+1) + ' ~ ' + yL+'.'+(mL+1);
 }
 
-function calShift(delta) { calOffset += delta; calRender(); }
-function calToday() { calOffset = 0; calRender(); }
+function calShift(delta) { calOffset += delta; calRender(); calFitHeight(); }
+function calToday() { calOffset = 0; calRender(); calFitHeight(); }
+
+// 박스 높이가 부족하면 날짜 셀 여백/달 간격을 자동으로 줄여서 최대한 스크롤 없이 맞춤
+var CAL_PAD_MAX = 5, CAL_PAD_MIN = 0;
+var CAL_MB_MAX = 14, CAL_MB_MIN = 2;
+var CAL_DOWPB_MAX = 5, CAL_DOWPB_MIN = 1;
+
+function calFitHeight() {
+  var box = document.getElementById('cal-box');
+  var elMonths = document.getElementById('cal-months');
+  var nav = box.querySelector('.cal-nav');
+  var root = document.documentElement.style;
+
+  // 1) 최대 여백으로 리셋한 뒤 실제 필요한 높이를 측정
+  root.setProperty('--cal-pad-y', CAL_PAD_MAX + 'px');
+  root.setProperty('--cal-month-mb', CAL_MB_MAX + 'px');
+  root.setProperty('--cal-dow-pb', CAL_DOWPB_MAX + 'px');
+
+  var boxStyle = getComputedStyle(box);
+  var padTop = parseFloat(boxStyle.paddingTop) || 0;
+  var padBottom = parseFloat(boxStyle.paddingBottom) || 0;
+  var navBox = nav.getBoundingClientRect();
+  var navMarginBottom = parseFloat(getComputedStyle(nav).marginBottom) || 0;
+
+  var available = box.clientHeight - padTop - padBottom - navBox.height - navMarginBottom;
+  var needed = elMonths.scrollHeight;
+
+  var ratio = needed > 0 ? available / needed : 1;
+  var scale = Math.max(0, Math.min(1, ratio));
+
+  root.setProperty('--cal-pad-y', (CAL_PAD_MIN + (CAL_PAD_MAX - CAL_PAD_MIN) * scale) + 'px');
+  root.setProperty('--cal-month-mb', (CAL_MB_MIN + (CAL_MB_MAX - CAL_MB_MIN) * scale) + 'px');
+  root.setProperty('--cal-dow-pb', (CAL_DOWPB_MIN + (CAL_DOWPB_MAX - CAL_DOWPB_MIN) * scale) + 'px');
+}
 
 calRender();
+calFitHeight();
+window.addEventListener('resize', calFitHeight);
+
+// 커스텀 리사이즈: 가로/세로 각각 독립적으로, 리미트 없이(가로) 항상 정상 동작
+(function () {
+  var box = document.getElementById('cal-box');
+  var handle = document.getElementById('cal-resize-handle');
+  var MIN_W = 200, MIN_H = 200;
+  var startX, startY, startW, startH, dragging = false;
+
+  function onMove(e) {
+    if (!dragging) return;
+    var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    var clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    var newW = Math.max(MIN_W, startW + (clientX - startX));
+    var newH = Math.max(MIN_H, startH + (clientY - startY));
+    box.style.width = newW + 'px';
+    box.style.height = newH + 'px';
+    calFitHeight();
+    e.preventDefault();
+  }
+  function onUp() {
+    dragging = false;
+    document.body.style.userSelect = '';
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    window.removeEventListener('touchmove', onMove);
+    window.removeEventListener('touchend', onUp);
+  }
+  function onDown(e) {
+    dragging = true;
+    var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    var clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    startX = clientX; startY = clientY;
+    startW = box.offsetWidth; startH = box.offsetHeight;
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove, { passive:false });
+    window.addEventListener('touchend', onUp);
+    e.preventDefault();
+  }
+  handle.addEventListener('mousedown', onDown);
+  handle.addEventListener('touchstart', onDown, { passive:false });
+})();
+
 </script>
 
 </body>
