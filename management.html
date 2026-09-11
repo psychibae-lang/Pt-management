@@ -740,6 +740,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
 
 <!-- ══ 문자발송 탭 ══ -->
 <div id="tabSms" class="container hidden">
+  <div class="tabs" id="alignCtrl_sms" style="margin-bottom:12px;"><button class="tab" onclick="setTabAlign('sms','left')">왼쪽</button><button class="tab" onclick="setTabAlign('sms','center')">가운데</button><button class="tab" onclick="setTabAlign('sms','right')">오른쪽</button></div>
   <div class="card">
     <div class="card-title">발송 대상 조회</div>
     <div style="display:flex;flex-direction:column;gap:12px;">
@@ -891,6 +892,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
 
 <!-- ══ 내원현황 탭 ══ -->
 <div id="tabStats" class="container hidden">
+  <div class="tabs" id="alignCtrl_stats" style="margin-bottom:12px;"><button class="tab" onclick="setTabAlign('stats','left')">왼쪽</button><button class="tab" onclick="setTabAlign('stats','center')">가운데</button><button class="tab" onclick="setTabAlign('stats','right')">오른쪽</button></div>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
       <div class="card-title" style="margin-bottom:0;">📊 내원현황 (오늘~90일)</div>
@@ -1038,6 +1040,9 @@ var ALIGN_TARGETS={
   drug:{id:'tabDrug',mode:'margin'},
   search:{id:'tabSearchInner',mode:'margin'},
   clin:{id:'clinFlexRow',mode:'justify'},
+  sms:{id:'tabSms',mode:'margin'},
+  stats:{id:'tabStats',mode:'margin'},
+  links:{id:'tabLinks',mode:'margin'},
   notice:{id:'tabNotice',mode:'margin'},
   proxy:{id:'tabProxy',mode:'margin'},
   selcare:{id:'tabSelcare',mode:'margin'},
@@ -4696,6 +4701,7 @@ async function confirmDelete() {
 </div>
 
 <div id="tabLinks" class="container">
+  <div class="tabs" id="alignCtrl_links" style="margin-bottom:12px;"><button class="tab" onclick="setTabAlign('links','left')">왼쪽</button><button class="tab" onclick="setTabAlign('links','center')">가운데</button><button class="tab" onclick="setTabAlign('links','right')">오른쪽</button></div>
 
   <!-- 저장된 링크 (상단) -->
   <div class="card">
