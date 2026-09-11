@@ -339,6 +339,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
 
 <!-- ══ 예약 탭 ══ -->
 <div id="tabAppt" class="container hidden">
+  <div class="tabs" id="alignCtrl_appt" style="margin-bottom:12px;"><button class="tab" onclick="setTabAlign('appt','left')">왼쪽</button><button class="tab" onclick="setTabAlign('appt','center')">가운데</button><button class="tab" onclick="setTabAlign('appt','right')">오른쪽</button></div>
   <div class="card" style="padding:14px 16px;">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
       <div style="font-size:13px;font-weight:700;color:#333;">📅 예약 현황 (오늘~8일)</div>
@@ -365,6 +366,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
 
 <!-- ══ 진료 탭 ══ -->
 <div id="tabPatient" class="container hidden">
+  <div class="tabs" id="alignCtrl_patient" style="margin-bottom:12px;"><button class="tab" onclick="setTabAlign('patient','left')">왼쪽</button><button class="tab" onclick="setTabAlign('patient','center')">가운데</button><button class="tab" onclick="setTabAlign('patient','right')">오른쪽</button></div>
   <div class="card">
     <div class="card-title">환자 조회</div>
     <div class="input-row">
@@ -488,6 +490,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
 
 <!-- ══ 약물입력 탭 ══ -->
 <div id="tabDrug" class="container hidden">
+  <div class="tabs" id="alignCtrl_drug" style="margin-bottom:12px;"><button class="tab" onclick="setTabAlign('drug','left')">왼쪽</button><button class="tab" onclick="setTabAlign('drug','center')">가운데</button><button class="tab" onclick="setTabAlign('drug','right')">오른쪽</button></div>
   <div class="card">
     <div class="card-title">STEP 1 · 환자 정보</div>
     <div class="input-row" style="margin-bottom:14px;">
@@ -544,7 +547,8 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
 
 <!-- ══ 접수조회 탭 ══ -->
 <div id="tabSearch" class="container hidden" style="max-width:100%;padding:0;">
-  <div style="max-width:740px;margin:0 auto;padding:16px 12px;">
+  <div id="tabSearchInner" style="max-width:740px;margin:0 auto;padding:16px 12px;">
+    <div class="tabs" id="alignCtrl_search" style="margin-bottom:12px;"><button class="tab" onclick="setTabAlign('search','left')">왼쪽</button><button class="tab" onclick="setTabAlign('search','center')">가운데</button><button class="tab" onclick="setTabAlign('search','right')">오른쪽</button></div>
     <!-- 검색 바 -->
     <div style="background:#f8fafc;border:1px solid #e2e4ef;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -633,8 +637,9 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
     <button onclick="saveClinResult()" class="btn btn-primary" style="font-size:12px;padding:7px 14px;">💾 저장</button>
     <button onclick="resetAllClin()" class="btn btn-outline" style="font-size:12px;padding:7px 12px;">🔄 초기화</button>
   </div>
+  <div class="tabs" id="alignCtrl_clin" style="margin:8px 0 0 16px;"><button class="tab" onclick="setTabAlign('clin','left')">왼쪽</button><button class="tab" onclick="setTabAlign('clin','center')">가운데</button><button class="tab" onclick="setTabAlign('clin','right')">오른쪽</button></div>
   <!-- 3열 레이아웃: 사이드바 + 메인 + 히스토리 -->
-  <div style="display:flex;min-height:calc(100vh - 170px);">
+  <div id="clinFlexRow" style="display:flex;min-height:calc(100vh - 170px);">
     <!-- 사이드바 -->
     <nav style="width:140px;flex-shrink:0;background:#fff;border-right:1px solid var(--border);padding:12px 0;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;">
       <div style="padding:0 12px 10px;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text2);font-weight:500;">검사 목록</div>
@@ -677,6 +682,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
 
 <!-- ══ 대리처방 탭 ══ -->
 <div id="tabProxy" class="container hidden">
+  <div class="tabs" id="alignCtrl_proxy" style="margin-bottom:12px;"><button class="tab" onclick="setTabAlign('proxy','left')">왼쪽</button><button class="tab" onclick="setTabAlign('proxy','center')">가운데</button><button class="tab" onclick="setTabAlign('proxy','right')">오른쪽</button></div>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
       <div class="card-title" style="margin-bottom:0;">대리처방 환자 명단</div>
@@ -713,6 +719,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
 
 <!-- ══ 선택의료 탭 ══ -->
 <div id="tabSelcare" class="container hidden">
+  <div class="tabs" id="alignCtrl_selcare" style="margin-bottom:12px;"><button class="tab" onclick="setTabAlign('selcare','left')">왼쪽</button><button class="tab" onclick="setTabAlign('selcare','center')">가운데</button><button class="tab" onclick="setTabAlign('selcare','right')">오른쪽</button></div>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <div class="card-title" style="margin-bottom:0;">선택의료 환자 명단</div>
@@ -809,6 +816,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
 
 <!-- ══ 전화번호변경 탭 ══ -->
 <div id="tabPhone" class="container hidden">
+  <div class="tabs" id="alignCtrl_phone" style="margin-bottom:12px;"><button class="tab" onclick="setTabAlign('phone','left')">왼쪽</button><button class="tab" onclick="setTabAlign('phone','center')">가운데</button><button class="tab" onclick="setTabAlign('phone','right')">오른쪽</button></div>
 
   <!-- 전화번호 미등록 환자 카드 -->
   <div class="card">
@@ -1020,6 +1028,50 @@ function switchTab(tab){
   if(tab==='sms') loadAligoConfig();
   if(tab==='proxy') loadSpecialList('proxy');
   if(tab==='selcare') loadSpecialList('selcare');
+}
+
+// ── 탭별 정렬(왼쪽/가운데/오른쪽) 저장 ───────────────────
+var ALIGN_TARGETS={
+  memo:{id:'tabMemo',mode:'margin'},
+  patient:{id:'tabPatient',mode:'margin'},
+  appt:{id:'tabAppt',mode:'margin'},
+  drug:{id:'tabDrug',mode:'margin'},
+  search:{id:'tabSearchInner',mode:'margin'},
+  clin:{id:'clinFlexRow',mode:'justify'},
+  notice:{id:'tabNotice',mode:'margin'},
+  proxy:{id:'tabProxy',mode:'margin'},
+  selcare:{id:'tabSelcare',mode:'margin'},
+  phone:{id:'tabPhone',mode:'margin'},
+  drugview:{id:'tabDrugview',mode:'margin'}
+};
+function applyTabAlign(key,align){
+  var cfg=ALIGN_TARGETS[key];if(!cfg)return;
+  var el=document.getElementById(cfg.id);if(!el)return;
+  if(cfg.mode==='justify'){
+    el.style.justifyContent=align==='left'?'flex-start':align==='right'?'flex-end':'center';
+  }else{
+    if(align==='left'){el.style.marginLeft='0';el.style.marginRight='auto';}
+    else if(align==='right'){el.style.marginLeft='auto';el.style.marginRight='0';}
+    else{el.style.marginLeft='auto';el.style.marginRight='auto';}
+  }
+  var ctrl=document.getElementById('alignCtrl_'+key);
+  if(ctrl){
+    Array.prototype.forEach.call(ctrl.children,function(btn,i){
+      var a=i===0?'left':i===1?'center':'right';
+      btn.classList.toggle('active',a===align);
+    });
+  }
+}
+function setTabAlign(key,align){
+  applyTabAlign(key,align);
+  try{localStorage.setItem('tabAlign_'+key,align);}catch(e){}
+}
+function initTabAligns(){
+  Object.keys(ALIGN_TARGETS).forEach(function(key){
+    var saved=null;
+    try{saved=localStorage.getItem('tabAlign_'+key);}catch(e){}
+    applyTabAlign(key,saved||'center');
+  });
 }
 
 // ── 날짜 ─────────────────────────────────────────────
@@ -4563,6 +4615,7 @@ async function confirmDelete() {
 <!-- ══ 링크 탭 ══ -->
 <!-- ══ 약물조회 탭 ══ -->
 <div id="tabDrugview" class="container hidden">
+  <div class="tabs" id="alignCtrl_drugview" style="margin-bottom:12px;"><button class="tab" onclick="setTabAlign('drugview','left')">왼쪽</button><button class="tab" onclick="setTabAlign('drugview','center')">가운데</button><button class="tab" onclick="setTabAlign('drugview','right')">오른쪽</button></div>
   <div class="card">
     <div class="card-title">💊 약물조회</div>
     <div class="input-row" style="margin-bottom:0;">
@@ -5530,6 +5583,7 @@ async function dvSavePDF() {
 
 <!-- ══ 간단메모 탭 ══ -->
 <div id="tabMemo" class="hidden container">
+  <div class="tabs" id="alignCtrl_memo" style="margin-bottom:12px;"><button class="tab" onclick="setTabAlign('memo','left')">왼쪽</button><button class="tab" onclick="setTabAlign('memo','center')">가운데</button><button class="tab" onclick="setTabAlign('memo','right')">오른쪽</button></div>
 
   <!-- 저장된 메모 (상단) -->
   <div class="card">
@@ -5750,6 +5804,7 @@ function mmEsc(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').r
 
 <!-- ══ 공지사항 & 비품관리 탭 ══ -->
 <div id="tabNotice" class="hidden" style="max-width:760px;margin:0 auto;padding:14px 12px 60px;">
+<div class="tabs" id="alignCtrl_notice" style="margin-bottom:12px;"><button class="tab" onclick="setTabAlign('notice','left')">왼쪽</button><button class="tab" onclick="setTabAlign('notice','center')">가운데</button><button class="tab" onclick="setTabAlign('notice','right')">오른쪽</button></div>
 
 <!-- 상단 바 -->
 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
@@ -7018,6 +7073,11 @@ body.trh-resizing { user-select: none; }
     showMainFloatPopup(fromId, fromLabel, msgText);
   });
 })();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  if(typeof initTabAligns==='function') initTabAligns();
+});
 </script>
 
 </body>
