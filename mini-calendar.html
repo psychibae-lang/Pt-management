@@ -15,12 +15,12 @@
   .cal-title { font-size:18px; font-weight:800; color:#1a1a1a; }
 
   :root {
-    --cal-pad-y: 5px;
-    --cal-month-mb: 14px;
-    --cal-dow-pb: 5px;
+    --cal-pad-y: 4px;
+    --cal-month-mb: 10px;
+    --cal-dow-pb: 4px;
   }
   .cal-box {
-    width:260px; height:620px; min-width:200px; min-height:280px;
+    width:235px; height:620px; min-width:200px; min-height:280px;
     max-width:none;
     position:relative; overflow:auto;
     border:1px solid #e4e8f0; border-radius:12px; background:#fff;
@@ -48,13 +48,13 @@
   .cal-month { margin-bottom:var(--cal-month-mb); }
   .cal-month-hd {
     background:linear-gradient(135deg,#7c3aed,#6d28d9); color:#fff; text-align:center;
-    font-weight:900; font-size:20px; padding:9px 0; border-radius:7px; margin-bottom:6px;
+    font-weight:900; font-size:18px; padding:7px 0; border-radius:7px; margin-bottom:6px;
   }
-  .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; text-align:center; }
-  .cal-dow { font-size:15px; font-weight:800; color:#888; padding:3px 0 var(--cal-dow-pb); }
+  .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; text-align:center; }
+  .cal-dow { font-size:14px; font-weight:800; color:#888; padding:3px 0 var(--cal-dow-pb); }
   .cal-dow.sun { color:#ef4444; }
   .cal-dow.sat { color:#3b82f6; }
-  .cal-day { font-size:21px; font-weight:800; padding:var(--cal-pad-y) 0; border-radius:5px; color:#222; }
+  .cal-day { font-size:19px; font-weight:800; padding:var(--cal-pad-y) 0; border-radius:5px; color:#222; }
   .cal-day.other { color:#dcdcdc; }
   .cal-day.sun { color:#ef4444; }
   .cal-day.holiday { color:#ef4444; font-weight:900; }
@@ -165,14 +165,14 @@ function calRender() {
   var today = new Date();
   var centerIdx = today.getFullYear()*12 + today.getMonth() + calOffset;
   var html = '';
-  for (var i=-1; i<=1; i++) {
+  for (var i=-2; i<=2; i++) {
     var idx = centerIdx + i;
     var y = Math.floor(idx/12);
     var m = ((idx%12)+12)%12;
     html += calBuildMonth(y, m);
   }
   elMonths.innerHTML = html;
-  var idxF = centerIdx-1, idxL = centerIdx+1;
+  var idxF = centerIdx-2, idxL = centerIdx+2;
   var yF=Math.floor(idxF/12), mF=((idxF%12)+12)%12;
   var yL=Math.floor(idxL/12), mL=((idxL%12)+12)%12;
   document.getElementById('cal-nav-label').textContent = yF+'.'+(mF+1) + ' ~ ' + yL+'.'+(mL+1);
@@ -182,9 +182,9 @@ function calShift(delta) { calOffset += delta; calRender(); calFitHeight(); }
 function calToday() { calOffset = 0; calRender(); calFitHeight(); }
 
 // 박스 높이가 부족하면 날짜 셀 여백/달 간격을 자동으로 줄여서 최대한 스크롤 없이 맞춤
-var CAL_PAD_MAX = 5, CAL_PAD_MIN = 0;
-var CAL_MB_MAX = 14, CAL_MB_MIN = 2;
-var CAL_DOWPB_MAX = 5, CAL_DOWPB_MIN = 1;
+var CAL_PAD_MAX = 4, CAL_PAD_MIN = 0;
+var CAL_MB_MAX = 10, CAL_MB_MIN = 2;
+var CAL_DOWPB_MAX = 4, CAL_DOWPB_MIN = 1;
 
 function calFitHeight() {
   var box = document.getElementById('cal-box');
