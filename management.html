@@ -908,6 +908,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
           <tr>
             <th style="min-width:80px;">날짜</th>
             <th style="min-width:30px;">요일</th>
+            <th style="min-width:60px;text-align:center;">총예상</th>
             <th style="min-width:50px;text-align:center;">예상</th>
             <th>챠트번호 목록 (클릭하면 진료 탭으로)</th>
           </tr>
@@ -2231,7 +2232,16 @@ async function loadVisitStats(){
     var days=['일','월','화','수','목','금','토'];
     var totalExpected=0;
 
-    dates.forEach(function(d6){
+    // 날짜별 인원수 배열 + 뒤에서부터 누적합(그 날짜부터 90일 끝까지 남은 총 예상환자수) 계산
+    var counts=dates.map(function(d6){return (grouped[d6]||[]).length;});
+    var cumFromHere=new Array(counts.length);
+    var running=0;
+    for(var ci=counts.length-1;ci>=0;ci--){
+      running+=counts[ci];
+      cumFromHere[ci]=running;
+    }
+
+    dates.forEach(function(d6,i){
       var charts=grouped[d6]||[];
       if(charts.length===0&&i>30) return; // 환자없는 날은 30일 이후는 스킵하지 않음
       var y=2000+parseInt(d6.slice(0,2)),mo=parseInt(d6.slice(2,4)),dd=parseInt(d6.slice(4,6));
@@ -2246,6 +2256,7 @@ async function loadVisitStats(){
       var chartJson=JSON.stringify(charts).replace(/"/g,'&quot;');
       var dateCell='<td style="font-family:monospace;font-size:13px;font-weight:'+(isToday?'700':'400')+';color:'+(isToday?'#4f8ef7':'#222')+';">'+d6+'</td>';
       var dayCell='<td style="font-size:13px;color:'+(isSun?'#e53e3e':isSat?'#4f8ef7':'#444')+';">'+days[dow]+'</td>';
+      var cumCell='<td style="text-align:center;font-weight:700;font-size:14px;color:#4f8ef7;">'+cumFromHere[i]+'</td>';
       var countCell='<td style="text-align:center;font-weight:600;font-size:14px;color:'+(charts.length>0?'#1a1d2e':'#bbb')+';">'+(charts.length||'-')+'</td>';
       var chartCell='<td>'
         +'<div style="font-size:12px;color:#666;line-height:1.8;margin-bottom:4px;">'+charts.map(function(c){
@@ -2254,7 +2265,7 @@ async function loadVisitStats(){
         +(charts.length>0?'<button onclick="downloadStatsCsv(\'' + d6 + '\','+chartJson+')" style="font-size:10px;padding:3px 8px;background:#fff;border:1px solid #c7d9fb;border-radius:4px;color:#4f8ef7;cursor:pointer;">📥 CSV</button>':'')
         +'</td>';
 
-      tr.innerHTML=dateCell+dayCell+countCell+chartCell;
+      tr.innerHTML=dateCell+dayCell+cumCell+countCell+chartCell;
       tbody.appendChild(tr);
     });
 
