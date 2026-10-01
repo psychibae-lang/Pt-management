@@ -23,6 +23,9 @@ header{background:#fff;border-bottom:1px solid var(--border);padding:10px 20px;d
 .nav-tabs-row.active{display:flex;}
 .nav-tab{background:none;border:none;border-bottom:3px solid transparent;color:var(--text2);font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:600;padding:9px 13px;cursor:pointer;white-space:nowrap;transition:all 0.15s;}
 .nav-tab:hover{color:var(--text);}.nav-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.nav-group-btn[draggable="true"],.nav-tab[draggable="true"]{cursor:grab;}
+.nav-group-btn.dragging,.nav-tab.dragging{opacity:.35;cursor:grabbing;}
+.nav-group-btn.drag-over,.nav-tab.drag-over{box-shadow:inset 2px 0 0 var(--accent);}
 .mob-nav{display:none;}
 .container{max-width:680px;margin:0 auto;padding:16px 12px;display:flex;flex-direction:column;gap:14px;}
 /* ── 탭 리사이즈 핸들 (구버전 제거됨) ── */
@@ -310,7 +313,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
   <span id="keyStatus" style="font-size:11px;color:var(--text2);"></span>
 </div>
 <div class="nav-wrap">
-  <div class="nav-groups-row">
+  <div class="nav-groups-row" id="navGroupsRow">
     <button class="nav-group-btn active" id="grpBtnJinryo" onclick="switchNavGroup('jinryo')">진료</button>
     <button class="nav-group-btn" id="grpBtnJohoe" onclick="switchNavGroup('johoe')">조회</button>
     <button class="nav-group-btn" id="grpBtnEtc" onclick="switchNavGroup('etc')">기타</button>
@@ -381,17 +384,17 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <span style="font-family:monospace;font-size:18px;font-weight:700;" id="pcChart"></span>
         <span id="pcTag"></span>
+        <span id="pcProxyBadge" class="hidden" style="background:#e53e3e;color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;">대리</span>
+        <span id="pcSmsBadge" class="hidden" style="background:#4f8ef7;color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;">문자</span>
         <button onclick="confirmDeletePatient()" style="font-size:10px;padding:3px 8px;background:#fff;border:1px solid #fca5a5;border-radius:5px;cursor:pointer;color:var(--danger);" title="이 환자의 모든 데이터 삭제">🗑 삭제</button>
       </div>
-      <button class="btn btn-primary" onclick="openVisitForm()" style="padding:9px 16px;">✏️ 진료 입력</button>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="openVisitForm()" style="padding:9px 16px;">✏️ 진료 입력</button>
+        <span id="pcVisitInfo" style="font-size:12px;color:var(--text2);white-space:nowrap;"></span>
+      </div>
     </div>
     <div class="pt-card">
       <div class="pt-card-row"><span class="pt-card-label">전화번호</span><span class="pt-card-val" id="pcPhone"></span></div>
-      <div class="pt-card-row"><span class="pt-card-label">문자</span><span class="pt-card-val" id="pcSmsYn"></span></div>
-      <div class="pt-card-row"><span class="pt-card-label">최근내원일</span><span class="pt-card-val" id="pcVisit"></span></div>
-      <div class="pt-card-row"><span class="pt-card-label">다음내원일</span><span class="pt-card-val" id="pcNext"></span></div>
-      <div class="pt-card-row"><span class="pt-card-label">대리처방</span><span class="pt-card-val" id="pcProxyRx"></span></div>
-      <div class="pt-card-row"><span class="pt-card-label">선택의료</span><span class="pt-card-val" id="pcSelCare"></span></div>
     </div>
   </div>
 
@@ -1113,6 +1116,7 @@ var _currentChart=null,_patientDrugs=[],_drugsChanged=false,_currentDaeriList=[]
 
 window.addEventListener('DOMContentLoaded',function(){
   checkKey();
+  if(typeof initAllNavSortables==='function') initAllNavSortables();
   document.getElementById('pVisitDateDisp').textContent=displayDate(today6());
   switchTab('links'); loadLinksTab();  // 첫 탭: 링크
   document.getElementById('pChartNo').addEventListener('keydown',function(e){if(e.key==='Enter')searchPatient();});
@@ -1254,19 +1258,17 @@ async function searchPatient(){
     if(btnChartEdit) btnChartEdit.style.display=isNew?'':'none';
     toggleChartEdit(false);
     document.getElementById('pcPhone').textContent=patient?(patient.phone||'미등록'):'미등록';
-    document.getElementById('pcSmsYn').textContent=patient?(patient.sms_yn==='N'?'제외':'발송'):'발송';
-    document.getElementById('pcVisit').textContent=visit?displayDate(fmt6(visit.visit_date)):'없음';
-    document.getElementById('pcNext').textContent=(visit&&visit.next_visit_date)?displayDate(fmt6(visit.next_visit_date)):'없음';
-    // 상단 환자카드 대리처방: daeri 테이블 건수 표시
-    document.getElementById('pcProxyRx').textContent=daeriList.length?daeriList.length+'건':'없음';
-    // 선택의료: 서류받은날짜 포함 표시
-    var selVal=visit?visit.selective_care:'N';
-    var selDate=visit?visit.proxy_rx:''; // proxy_rx 컬럼을 서류받은날짜로 재활용
-    var selText='-';
-    if(selVal==='Y'){
-      selText=selDate?'예 (서류: '+selDate+')':'예 (서류미수령)';
+    // 최근내원일/다음내원일 → 진료입력 버튼 오른편에 표시
+    var pcVisitInfo=document.getElementById('pcVisitInfo');
+    if(pcVisitInfo){
+      pcVisitInfo.textContent='최근내원일 '+(visit?displayDate(fmt6(visit.visit_date)):'없음')+'  ·  다음내원일 '+((visit&&visit.next_visit_date)?displayDate(fmt6(visit.next_visit_date)):'없음');
     }
-    document.getElementById('pcSelCare').textContent=selText;
+    // 대리처방 신청 내역 있으면 빨간 배지 표시
+    var pcProxyBadge=document.getElementById('pcProxyBadge');
+    if(pcProxyBadge) pcProxyBadge.classList.toggle('hidden',daeriList.length===0);
+    // 문자 동의 안 한 경우만 파란 배지 표시
+    var pcSmsBadge=document.getElementById('pcSmsBadge');
+    if(pcSmsBadge) pcSmsBadge.classList.toggle('hidden',!(patient&&patient.sms_yn==='N'));
     document.getElementById('patientCard').classList.remove('hidden');
 
     document.getElementById('pPhone').value=patient?(patient.phone||''):'';
@@ -5062,6 +5064,58 @@ function switchNavGroup(group) {
     if (btn) btn.classList.toggle('active', g === group);
     if (row) row.classList.toggle('active', g === group);
   });
+}
+// ── 메뉴 탭 순서 변경(드래그로 재배열, localStorage에 저장) ──────
+function initNavSortable(containerId, storageKey){
+  var container=document.getElementById(containerId);
+  if(!container) return;
+  // 저장된 순서 복원
+  try{
+    var savedOrder=JSON.parse(localStorage.getItem(storageKey)||'null');
+    if(savedOrder&&savedOrder.length){
+      var byId={};
+      Array.prototype.forEach.call(container.children,function(c){byId[c.id]=c;});
+      savedOrder.forEach(function(id){ if(byId[id]) container.appendChild(byId[id]); });
+      // 저장된 목록에 없는 새 버튼은 DOM에 남아있는 순서 그대로 뒤에 붙음
+    }
+  }catch(e){}
+
+  var dragEl=null;
+  function saveOrder(){
+    var order=Array.prototype.map.call(container.children,function(c){return c.id;}).filter(Boolean);
+    try{ localStorage.setItem(storageKey, JSON.stringify(order)); }catch(e){}
+  }
+  Array.prototype.forEach.call(container.children,function(btn){
+    if(!btn.id) return;
+    btn.setAttribute('draggable','true');
+    btn.addEventListener('dragstart',function(e){
+      dragEl=btn;
+      btn.classList.add('dragging');
+      e.dataTransfer.effectAllowed='move';
+      try{ e.dataTransfer.setData('text/plain', btn.id); }catch(err){}
+    });
+    btn.addEventListener('dragend',function(){
+      btn.classList.remove('dragging');
+      Array.prototype.forEach.call(container.children,function(c){c.classList.remove('drag-over');});
+      dragEl=null;
+      saveOrder();
+    });
+    btn.addEventListener('dragover',function(e){
+      e.preventDefault();
+      if(!dragEl||dragEl===btn) return;
+      e.dataTransfer.dropEffect='move';
+      var rect=btn.getBoundingClientRect();
+      var insertAfter=(e.clientX-rect.left)>rect.width/2;
+      container.insertBefore(dragEl, insertAfter?btn.nextSibling:btn);
+    });
+    btn.addEventListener('drop',function(e){ e.preventDefault(); saveOrder(); });
+  });
+}
+function initAllNavSortables(){
+  initNavSortable('navGroupsRow','navOrder_groups');
+  initNavSortable('grpJinryo','navOrder_jinryo');
+  initNavSortable('grpJohoe','navOrder_johoe');
+  initNavSortable('grpEtc','navOrder_etc');
 }
 // ─────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════
