@@ -380,21 +380,62 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
   </div>
 
   <div class="card hidden" id="patientCard">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <span style="font-family:monospace;font-size:18px;font-weight:700;" id="pcChart"></span>
         <span id="pcTag"></span>
-        <span id="pcProxyBadge" class="hidden" style="background:#e53e3e;color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;">대리</span>
         <span id="pcSmsBadge" class="hidden" style="background:#4f8ef7;color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;">문자</span>
-        <button onclick="confirmDeletePatient()" style="font-size:10px;padding:3px 8px;background:#fff;border:1px solid #fca5a5;border-radius:5px;cursor:pointer;color:var(--danger);" title="이 환자의 모든 데이터 삭제">🗑 삭제</button>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="openVisitForm()" style="padding:9px 16px;">✏️ 진료 입력</button>
-        <span id="pcVisitInfo" style="font-size:12px;color:var(--text2);white-space:nowrap;"></span>
+      <button onclick="confirmDeletePatient()" style="font-size:11px;padding:5px 10px;background:#fff;border:1px solid #fca5a5;border-radius:6px;cursor:pointer;color:var(--danger);font-weight:600;" title="이 환자의 모든 데이터 삭제">🗑 삭제</button>
+    </div>
+    <div style="display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="openVisitForm()" style="padding:9px 16px;white-space:nowrap;">✏️ 진료 입력</button>
+      <div style="background:#eaffea;border:1.5px solid #86e086;border-radius:9px;padding:6px 12px;text-align:center;min-width:88px;">
+        <div style="font-size:9px;font-weight:700;color:#2d7d2d;text-transform:uppercase;letter-spacing:0.05em;">최근내원일</div>
+        <div id="pcLastVisit" style="font-size:13px;font-weight:800;color:#1a6b1a;white-space:nowrap;"></div>
+      </div>
+      <div onclick="openNextVisitQuickEdit()" title="클릭해서 다음내원일 변경" style="cursor:pointer;background:#eaffea;border:1.5px solid #86e086;border-radius:9px;padding:6px 12px;text-align:center;min-width:88px;">
+        <div style="font-size:9px;font-weight:700;color:#2d7d2d;text-transform:uppercase;letter-spacing:0.05em;">다음내원일 ✎</div>
+        <div id="pcNextVisit" style="font-size:13px;font-weight:800;color:#1a6b1a;white-space:nowrap;"></div>
+      </div>
+      <div id="pcDaeriPill" class="hidden" onclick="switchTab('proxy')" title="대리처방 내역 보기" style="cursor:pointer;background:#4338ca;border-radius:9px;padding:6px 12px;text-align:center;min-width:76px;">
+        <div style="font-size:9px;font-weight:700;color:#c7d2fe;text-transform:uppercase;letter-spacing:0.05em;">대리</div>
+        <div id="pcDaeriDate" style="font-size:13px;font-weight:800;color:#fff;white-space:nowrap;"></div>
+      </div>
+      <div id="pcSelcarePill" class="hidden" style="background:#ec4899;border-radius:9px;padding:6px 12px;text-align:center;min-width:76px;">
+        <div style="font-size:9px;font-weight:700;color:#fce7f3;text-transform:uppercase;letter-spacing:0.05em;">선택의료</div>
+        <div id="pcSelcareDateDisp" style="font-size:13px;font-weight:800;color:#fff;white-space:nowrap;"></div>
+      </div>
+      <button class="btn btn-outline" onclick="togglePcSelcareEdit()" style="font-size:12px;padding:9px 12px;white-space:nowrap;">선택의료편집</button>
+    </div>
+
+    <!-- 다음내원일 퀵에딧 패널 -->
+    <div id="pcNextVisitEditPanel" class="hidden" style="margin-top:10px;background:#eef3fe;border:1px solid #c7d9fb;border-radius:10px;padding:10px 14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:6px;">다음내원일 변경</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <input type="text" id="pcNextVisitInput" placeholder="미선택" readonly style="cursor:pointer;max-width:130px;background:#fff;" onclick="openCal('pcNextVisitInput')">
+        <button onclick="openCal('pcNextVisitInput')" class="btn btn-outline" style="padding:7px 10px;">📅</button>
+        <button onclick="document.getElementById('pcNextVisitInput').value=''" class="btn btn-outline" style="padding:7px 10px;color:var(--danger);" title="날짜 지우기">✕</button>
+        <button onclick="saveNextVisitQuick()" class="btn btn-success" style="font-size:12px;padding:7px 14px;">저장</button>
+        <button onclick="document.getElementById('pcNextVisitEditPanel').classList.add('hidden')" class="btn btn-outline" style="font-size:11px;padding:7px 10px;">닫기</button>
       </div>
     </div>
-    <div class="pt-card">
-      <div class="pt-card-row"><span class="pt-card-label">전화번호</span><span class="pt-card-val" id="pcPhone"></span></div>
+
+    <!-- 선택의료 퀵에딧 패널 -->
+    <div id="pcSelcareEditPanel" class="hidden" style="margin-top:10px;background:#ec4899;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:8px;">선택의료</div>
+      <label style="display:block;margin-bottom:6px;font-size:11px;color:#fde7f1;">서류받은날짜 (서류받은 경우 날짜 입력, 미수령이면 빈칸)</label>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <input type="text" id="pcSelcareInput" placeholder="예: 260515" readonly style="cursor:pointer;max-width:130px;background:#fff;" onclick="openCal('pcSelcareInput')">
+        <button onclick="openCal('pcSelcareInput')" class="btn btn-outline" style="padding:7px 10px;background:#fff;">📅</button>
+        <button onclick="document.getElementById('pcSelcareInput').value=''" class="btn btn-outline" style="padding:7px 10px;color:var(--danger);background:#fff;" title="날짜 지우기">✕</button>
+      </div>
+      <div style="font-size:11px;color:#fde7f1;margin-top:5px;">서류받은 날짜 또는 경고사 인표시 예를 들어 빨간색으로 서류받음 등</div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button onclick="savePcSelcare()" style="background:#fff;color:#ec4899;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;">✓ 선택의료 저장</button>
+        <button onclick="document.getElementById('pcSelcareEditPanel').classList.add('hidden')" style="background:rgba(255,255,255,0.25);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:12px;cursor:pointer;">닫기</button>
+        <span id="pcSelcareSaveStatus" style="font-size:11px;color:#fff;"></span>
+      </div>
     </div>
   </div>
 
@@ -407,7 +448,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
       <button onclick="toggleVisitDateEdit()" id="btnVisitDateEdit" style="font-size:11px;padding:4px 10px;background:#fff;border:1px solid #c7d9fb;border-radius:6px;cursor:pointer;color:var(--accent);">날짜 변경</button>
       <button onclick="resetVisitDateToToday()" id="btnVisitDateReset" style="font-size:11px;padding:4px 10px;background:#fff;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--text2);display:none;">오늘로</button>
     </div>
-    <div style="margin-bottom:14px;">
+    <div style="margin-bottom:14px;display:none;">
       <label style="display:block;margin-bottom:6px;">다음내원일</label>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
         <input type="text" id="pNextVisitDate" placeholder="미선택" readonly style="cursor:pointer;max-width:140px;background:#fff;" onclick="openCal('pNextVisitDate')">
@@ -437,7 +478,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
       </div>
       <div id="piDrugArea" style="margin-bottom:8px;"></div>
     </div>
-    <div style="margin-bottom:12px;padding-top:12px;border-top:1px solid var(--border);">
+    <div style="margin-bottom:12px;padding-top:12px;border-top:1px solid var(--border);display:none;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <span style="font-size:12px;font-weight:600;color:var(--text2);">대리처방 / 선택의료</span>
         <button id="btnSaveExtra" onclick="saveExtraOnly()" class="btn btn-success" style="font-size:12px;padding:6px 12px;">저장</button>
@@ -486,8 +527,6 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
       </div>
       <div style="font-size:11px;color:var(--text2);margin-top:4px;">※ 전화번호·문자발송 여부만 저장</div>
     </div>
-    <button class="btn btn-success btn-lg" id="saveAllBtn" onclick="saveVisitAll()">💾 전체 저장</button>
-    <div id="visitSaveStatus" class="hidden" style="margin-top:8px;"></div>
   </div>
 </div>
 
@@ -1257,15 +1296,32 @@ async function searchPatient(){
     var btnChartEdit=document.getElementById('btnChartEdit');
     if(btnChartEdit) btnChartEdit.style.display=isNew?'':'none';
     toggleChartEdit(false);
-    document.getElementById('pcPhone').textContent=patient?(patient.phone||'미등록'):'미등록';
-    // 최근내원일/다음내원일 → 진료입력 버튼 오른편에 표시
-    var pcVisitInfo=document.getElementById('pcVisitInfo');
-    if(pcVisitInfo){
-      pcVisitInfo.textContent='최근내원일 '+(visit?displayDate(fmt6(visit.visit_date)):'없음')+'  ·  다음내원일 '+((visit&&visit.next_visit_date)?displayDate(fmt6(visit.next_visit_date)):'없음');
+    // 최근내원일 / 다음내원일 뱃지
+    document.getElementById('pcLastVisit').textContent=visit?displayDate(fmt6(visit.visit_date)):'없음';
+    document.getElementById('pcNextVisit').textContent=(visit&&visit.next_visit_date)?displayDate(fmt6(visit.next_visit_date)):'미선택';
+    // 대리 뱃지 — 대리처방 신청 내역 있을 때만 표시
+    var pcDaeriPill=document.getElementById('pcDaeriPill');
+    if(pcDaeriPill){
+      var hasDaeri=daeriList.length>0;
+      pcDaeriPill.classList.toggle('hidden',!hasDaeri);
+      if(hasDaeri){
+        document.getElementById('pcDaeriDate').textContent=displayDate(caToD6(daeriList[0].created_at));
+      }
     }
-    // 대리처방 신청 내역 있으면 빨간 배지 표시
-    var pcProxyBadge=document.getElementById('pcProxyBadge');
-    if(pcProxyBadge) pcProxyBadge.classList.toggle('hidden',daeriList.length===0);
+    // 선택의료 뱃지 — 선택의료 Y인 경우만 표시
+    var selVal=(visit&&visit.selective_care==='Y')?'Y':'N';
+    var pcSelcarePill=document.getElementById('pcSelcarePill');
+    if(pcSelcarePill){
+      pcSelcarePill.classList.toggle('hidden',selVal!=='Y');
+      if(selVal==='Y'){
+        document.getElementById('pcSelcareDateDisp').textContent=visit&&visit.proxy_rx?displayDate(fmt6(visit.proxy_rx)):'미수령';
+      }
+    }
+    // 퀵에딧 패널은 매 조회마다 닫아둔다
+    var npPanel=document.getElementById('pcNextVisitEditPanel');
+    if(npPanel) npPanel.classList.add('hidden');
+    var scPanel=document.getElementById('pcSelcareEditPanel');
+    if(scPanel) scPanel.classList.add('hidden');
     // 문자 동의 안 한 경우만 파란 배지 표시
     var pcSmsBadge=document.getElementById('pcSmsBadge');
     if(pcSmsBadge) pcSmsBadge.classList.toggle('hidden',!(patient&&patient.sms_yn==='N'));
@@ -1273,16 +1329,15 @@ async function searchPatient(){
 
     document.getElementById('pPhone').value=patient?(patient.phone||''):'';
     document.getElementById('pSmsYn').checked=patient?patient.sms_yn!=='N':true;
-    document.getElementById('pNextVisitDate').value='';
-    // 선택의료 토글 + 서류날짜
-    var selVal=(visit&&visit.selective_care==='Y')?'Y':'N';
+    document.getElementById('pNextVisitDate').value=(visit&&visit.next_visit_date)?fmt6(visit.next_visit_date):'';
+    // 선택의료 토글 + 서류날짜 (숨겨진 레거시 요소 — 저장 로직에서 사용)
     setToggleBtn('pSelCare',selVal);
     var selDateWrap=document.getElementById('pSelCareDateWrap');
     if(selDateWrap) selDateWrap.style.display=selVal==='Y'?'block':'none';
     var selDateInput=document.getElementById('pSelCareDate');
     if(selDateInput) selDateInput.value=(visit&&visit.proxy_rx&&selVal==='Y')?visit.proxy_rx:'';
     applySelCareStyle(selVal);
-    // 대리처방 daeri 목록 렌더
+    // 대리처방 daeri 목록 렌더 (숨겨진 레거시 테이블 — 호환용으로 계속 채워둠)
     _currentDaeriList=daeriList;
     renderDaeriList(daeriList);
     setStatus('searchStatus','success',isNew?'신환입니다.':'조회 완료');
@@ -1304,6 +1359,65 @@ function openVisitForm(){
   renderPatientDrugs();
   renderDaeriList(_currentDaeriList||[]);
   setTimeout(function(){document.getElementById('visitForm').scrollIntoView({behavior:'smooth'});},100);
+}
+
+// ── 환자카드 퀵에딧 브릿지 함수 (다음내원일 / 선택의료) ──
+function openNextVisitQuickEdit(){
+  var scPanel=document.getElementById('pcSelcareEditPanel');
+  if(scPanel) scPanel.classList.add('hidden');
+  var panel=document.getElementById('pcNextVisitEditPanel');
+  if(!panel) return;
+  var hidden=document.getElementById('pNextVisitDate');
+  var input=document.getElementById('pcNextVisitInput');
+  if(input) input.value=hidden?hidden.value:'';
+  panel.classList.remove('hidden');
+}
+
+async function saveNextVisitQuick(){
+  if(!_currentChart)return;
+  var val=document.getElementById('pcNextVisitInput').value.trim();
+  var hidden=document.getElementById('pNextVisitDate');
+  if(hidden) hidden.value=val;
+  await saveVisitDate();
+  var panel=document.getElementById('pcNextVisitEditPanel');
+  if(panel) panel.classList.add('hidden');
+}
+
+function togglePcSelcareEdit(){
+  var npPanel=document.getElementById('pcNextVisitEditPanel');
+  if(npPanel) npPanel.classList.add('hidden');
+  var panel=document.getElementById('pcSelcareEditPanel');
+  if(!panel) return;
+  var willOpen=panel.classList.contains('hidden');
+  if(willOpen){
+    var hidden=document.getElementById('pSelCareDate');
+    var input=document.getElementById('pcSelcareInput');
+    if(input) input.value=hidden?hidden.value:'';
+    var statusEl=document.getElementById('pcSelcareSaveStatus');
+    if(statusEl) statusEl.textContent='';
+    panel.classList.remove('hidden');
+  }else{
+    panel.classList.add('hidden');
+  }
+}
+
+async function savePcSelcare(){
+  if(!_currentChart)return;
+  var val=document.getElementById('pcSelcareInput').value.trim();
+  var selVal=val?'Y':'N';
+  toggleSelCare(selVal);
+  var selDateInput=document.getElementById('pSelCareDate');
+  if(selDateInput) selDateInput.value=val;
+  var statusEl=document.getElementById('pcSelcareSaveStatus');
+  if(statusEl) statusEl.textContent='저장중...';
+  try{
+    await saveSelcareOnly();
+    if(statusEl){statusEl.textContent='✓ 저장됨';setTimeout(function(){statusEl.textContent='';},2000);}
+    var panel=document.getElementById('pcSelcareEditPanel');
+    if(panel) panel.classList.add('hidden');
+  }catch(err){
+    if(statusEl) statusEl.textContent='✕ 저장 실패';
+  }
 }
 
 function renderDaeriList(list){
@@ -1678,6 +1792,12 @@ function renderPatientDrugs(){
   html+='<div style="margin-top:10px;">'
     +'<label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text2);">코멘트</label>'
     +'<textarea id="drugCommentInput" placeholder="예: 26/7 스리반 추가" style="width:100%;min-height:48px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;" oninput="onDrugCommentChange(this.value)">'+cmtVal+'</textarea>'
+    +'</div>';
+
+  // ── 전체 저장 버튼 (복용약물/코멘트 영역으로 이동) ──
+  html+='<div style="margin-top:14px;">'
+    +'<button class="btn btn-success btn-lg" id="saveAllBtn" onclick="saveVisitAll()">💾 전체 저장</button>'
+    +'<div id="visitSaveStatus" class="hidden" style="margin-top:8px;"></div>'
     +'</div>';
 
   el.innerHTML=html;
