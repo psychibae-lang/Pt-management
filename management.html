@@ -1358,7 +1358,13 @@ function openVisitForm(){
   _drugsChanged=false;
   renderPatientDrugs();
   renderDaeriList(_currentDaeriList||[]);
-  setTimeout(function(){document.getElementById('visitForm').scrollIntoView({behavior:'smooth'});},100);
+  // 환자카드(최근내원일·다음내원일·선택의료편집)가 화면 상단에 오도록 스크롤 (고정 헤더 높이만큼 보정)
+  setTimeout(function(){
+    var card=document.getElementById('patientCard');
+    var hdr=document.querySelector('header');
+    var off=(hdr?hdr.offsetHeight:0)+10;
+    window.scrollTo({top:card.getBoundingClientRect().top+window.pageYOffset-off,behavior:'smooth'});
+  },100);
 }
 
 // ── 환자카드 퀵에딧 브릿지 함수 (다음내원일 / 선택의료) ──
