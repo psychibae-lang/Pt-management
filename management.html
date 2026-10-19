@@ -374,7 +374,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
     <div class="card-title">환자 조회</div>
     <div class="input-row">
       <div class="input-group" style="max-width:160px;"><label>챠트번호</label><input type="text" id="pChartNo" placeholder="예: 26" oninput="clearPatient()"></div>
-      <button class="btn btn-primary" onclick="searchPatient()">🔍 조회</button>
+      <button class="btn btn-primary" onclick="searchPatient(true)">🔍 조회</button>
     </div>
     <div id="searchStatus" class="hidden" style="margin-top:10px;"></div>
   </div>
@@ -1158,7 +1158,7 @@ window.addEventListener('DOMContentLoaded',function(){
   if(typeof initAllNavSortables==='function') initAllNavSortables();
   document.getElementById('pVisitDateDisp').textContent=displayDate(today6());
   switchTab('links'); loadLinksTab();  // 첫 탭: 링크
-  document.getElementById('pChartNo').addEventListener('keydown',function(e){if(e.key==='Enter')searchPatient();});
+  document.getElementById('pChartNo').addEventListener('keydown',function(e){if(e.key==='Enter')searchPatient(true);});
   document.getElementById('chartNo').addEventListener('input',updateConvertBtn);
   document.getElementById('fileInput').addEventListener('change',function(e){if(e.target.files[0])loadImg(e.target.files[0]);});
   var zone=document.getElementById('uploadZone');
@@ -1252,7 +1252,8 @@ async function confirmDeletePatient(){
   }
 }
 
-async function searchPatient(){
+// autoSaveDrugs: 사용자가 직접 조회(버튼/Enter/자동조회)한 경우 → 조회 후 약물 저장 자동 실행 (검사 앱 약물조회용)
+async function searchPatient(autoSaveDrugs){
   var chartNo=document.getElementById('pChartNo').value.trim();
   if(!chartNo)return;
   setStatus('searchStatus','loading','조회 중...');
@@ -1343,6 +1344,10 @@ async function searchPatient(){
     setStatus('searchStatus','success',isNew?'신환입니다.':'조회 완료');
     // 조회 완료 후 진료 입력창 자동 열기
     openVisitForm();
+    // 저장된 약물이 있으면 약물 저장 자동 클릭 (빈 5칸만 있는 경우는 저장 안 함)
+    if(autoSaveDrugs===true && _patientDrugs.some(function(d){return d.drug_code||d.drug_name;})){
+      await saveDrugsOnly();
+    }
   }catch(err){setStatus('searchStatus','error','조회 실패: '+err.message);}
 }
 
@@ -1575,7 +1580,7 @@ async function saveDrugsOnly(){
     if(label) label.textContent = displayDate(savedD);
     setStatus('visitSaveStatus','success','✓ 약물 저장됨 ('+displayDate(savedD)+')');
   }catch(err){setStatus('visitSaveStatus','error','약물 저장 실패: '+err.message);}
-  finally{btn.disabled=false;btn.textContent='저장';}
+  finally{btn.disabled=false;btn.textContent='약물 저장';}
 }
 
 async function savePhoneOnly(){
@@ -2423,7 +2428,35 @@ function downloadStatsCsv(date6, charts){
 function goToPatient(chartNo){
   switchTab('patient');
   document.getElementById('pChartNo').value=chartNo;
-  searchPatient();
+  searchPatient(true);
+}
+
+// ── 접수조회 저장 → 챠트번호 화면 자동 조회 ─────────────
+// 같은 컴퓨터의 다른 창/탭(진료 화면)으로 챠트번호를 보내 진료-환자조회에서 자동 조회.
+// 다른 창이 응답하지 않으면 지금 창에서 진료 탭으로 이동해 조회.
+var _chartSyncCh = null;
+try { _chartSyncCh = new BroadcastChannel('pt_mgmt_chart_sync'); } catch(e) {}
+if (_chartSyncCh) {
+  _chartSyncCh.onmessage = function(ev) {
+    var m = ev.data || {};
+    if (m.type === 'goto' && m.chart) {
+      _chartSyncCh.postMessage({ type: 'ack', reqId: m.reqId });
+      goToPatient(m.chart);
+    }
+  };
+}
+function sendChartToPatientScreen(chartNo) {
+  if (!chartNo) return;
+  if (!_chartSyncCh) { goToPatient(chartNo); return; }
+  var reqId = Date.now() + '_' + Math.random();
+  var acked = false;
+  var onAck = function(ev) { var m = ev.data || {}; if (m.type === 'ack' && m.reqId === reqId) acked = true; };
+  _chartSyncCh.addEventListener('message', onAck);
+  _chartSyncCh.postMessage({ type: 'goto', chart: chartNo, reqId: reqId });
+  setTimeout(function() {
+    _chartSyncCh.removeEventListener('message', onAck);
+    if (!acked) goToPatient(chartNo);
+  }, 700);
 }
 
 // ══ 예약 탭 ══════════════════════════════════════════
@@ -4702,6 +4735,9 @@ async function oneStopSave(id, btnId) {
 
   btn.innerHTML = '✅ 완료!';
   showToast('✅ 챠트저장 + PDF 완료!');
+  // 약 5초 후 챠트번호 화면(진료-환자조회)에서 자동 조회
+  const syncChart = String(row.chart || '').trim();
+  if (syncChart) setTimeout(function() { sendChartToPatientScreen(syncChart); }, 5000);
   setTimeout(function() { btn.innerHTML = origHTML; btn.disabled = false; }, 3000);
 }
 
