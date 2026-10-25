@@ -626,6 +626,22 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
   </div>
 </div>
 
+<!-- 접수 실시간 동의서 팝업 -->
+<div id="cw-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9500;overflow-y:auto;">
+  <div style="background:#fff;max-width:760px;margin:24px auto;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+    <div style="background:#1a3a5c;color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;">
+      <span id="cw-title" style="font-size:16px;font-weight:700;"></span>
+      <button onclick="cwClose()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;">✕</button>
+    </div>
+    <iframe id="cw-frame" style="width:100%;height:68vh;border:0;background:#fff;"></iframe>
+    <div style="padding:12px 20px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+      <button onclick="cwPrint()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer;font-weight:700;">🖨️ PDF</button>
+      <button id="cw-save" onclick="cwSave()" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer;font-weight:700;">💾 저장 (챠트번호·전화번호)</button>
+      <button onclick="cwClose()" class="btn btn-outline" style="font-size:14px;">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- 수정 모달 -->
 <div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9100;overflow-y:auto;">
   <div style="background:#fff;max-width:400px;margin:80px auto;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
@@ -3760,6 +3776,7 @@ function showToast(msg) {
 // ═══════════════════════════════════════
 // 대리처방 & 초진 통합 로직
 // ═══════════════════════════════════════
+function addrHead(a){return String(a||'').trim().slice(0,7);}
 const SHEET_WEB_APP_URL2 = "https://script.google.com/macros/s/AKfycbzFR4dqmK32DDSHf8s6D0IJzmOFJYakSyBFOCx5MXrcb-zA5XMs9Dk3cBKNkzBCzOc/exec";
 
 // ─ 라디오 아이템 스타일 주입 ─
@@ -4015,7 +4032,7 @@ async function cj2Submit(){
       filename
     });
     // ── 구글 시트 전송 ──
-    await fetch(SHEET_WEB_APP_URL2,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({sheet:'초진',row:[dr2FullDate(),chart,n,i1,i2,ph,ad,a1?'동의':'미동의',a2?'동의':'미동의',a3?'동의':'미동의',a4?'동의':'미동의',a5?'동의':'미동의',a6?'확인':'미확인',sigUrl||'(드라이브링크)',filename],signature:sigDataUrl})});
+    await fetch(SHEET_WEB_APP_URL2,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({sheet:'초진',row:[dr2FullDate(),chart,n,i1,'',ph,addrHead(ad),a1?'동의':'미동의',a2?'동의':'미동의',a3?'동의':'미동의',a4?'동의':'미동의',a5?'동의':'미동의',a6?'확인':'미확인',sigUrl||'(드라이브링크)',filename],signature:sigDataUrl})});
     toast('✅ 저장 완료!');
   }catch(e){toast('📄 PDF 저장 완료 (네트워크 오류)'); console.error(e);}
 }
@@ -4577,9 +4594,113 @@ function pc2Reset() {
 
 
 
+
+// ══ 초진 접수 동의서 (pad 화면과 동일 양식, 주민번호 뒷자리 가림) ══
+function _cEsc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function buildConsentHtml(row, opts){
+  opts = opts || {};
+  var d = new Date(row.created_at);
+  var today = d.toLocaleDateString('ko-KR',{timeZone:'Asia/Seoul'});
+  var yymmdd = d.toLocaleDateString('en-CA',{timeZone:'Asia/Seoul'}).slice(2).replace(/-/g,'');
+  var chart = String(row.chart||'').trim();
+  var filename = row.filename || (chart+'초진접수'+yymmdd);
+  var title = chart+'신환동의서'+yymmdd;
+  function ag(v,yes,no,ok){ return '<strong style="color:'+(v?'#27ae60':'#c0392b')+'">'+(v?('✔ '+yes):('✘ '+no))+'</strong>'; }
+  var rows = [
+    ['6. 개인정보 수집·이용 동의','귀하의 소중한 개인정보는 의료법 및 개인정보보호법의 관련규정에 의하여 진료 및 진료 지원의 목적으로 수집 및 이용됩니다.',row.agree1,'동의','미동의'],
+    ['7. 진단서 발급 관련 동의','금일 진료 후 진단서 발급 불가하며, 최소 1~2개월의 외래 진료 후 발급 가능함을 확인합니다.',row.agree2,'동의','미동의'],
+    ['8. 본인 확인 불가 시 진료 불가 동의','주민등록증, 운전면허증 등으로 본인 확인이 되지 않을 경우 진료 불가함에 동의합니다.',row.agree3,'동의','미동의'],
+    ['9. 발급 서류 환불 불가 동의','발급된 서류는 환불이 되지 않음을 이해하고 동의합니다.',row.agree4,'동의','미동의'],
+    ['10. 상담료·검사비 발생 동의','약 처방이 없더라도 상담료 및 검사비 등이 발생됨을 이해하고 동의합니다.',row.agree5,'동의','미동의'],
+    ['11. CCTV 촬영 안내 확인','본 병원은 24시간 CCTV 촬영 중임을 알려드립니다.',row.agree6,'확인','미확인']
+  ].map(function(r){ return '<tr><td>'+r[0]+'</td><td>'+r[1]+'<br>'+ag(r[2],r[3],r[4])+'</td></tr>'; }).join('');
+  var sig = row.signature_url ? '<img src="'+_cEsc(row.signature_url)+'" class="sig-img" alt="서명">' : '<span class="sig-label">(서명 이미지 없음)</span>';
+  var css = "@page{size:A4 portrait;margin:10mm 12mm 8mm}html,body{margin:0;padding:0}body{font-family:'Noto Sans KR',sans-serif;color:#222;font-size:11.5px}h2{text-align:center;color:#1a3a5c;font-family:'Noto Serif KR',serif;font-size:15px;margin:0 0 2px}.sub{text-align:center;color:#888;font-size:10px;margin-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:6px}td{padding:5px 8px;border:1px solid #ccc;font-size:11px;line-height:1.45}td:first-child{background:#f0f3f8;font-weight:600;color:#1a3a5c;white-space:nowrap}.info-table td:first-child{width:28%}.agree-table td:first-child{width:30%}h3{color:#1a3a5c;margin:7px 0 2px;font-size:12px;border-top:1px solid #ccc;padding-top:5px}.sig-section{margin-top:6px;display:flex;align-items:center;gap:14px;border-top:1.5px solid #1a3a5c;padding-top:5px}.sig-label{font-size:10px;color:#888;white-space:nowrap}.sig-img{height:44px;max-width:220px;border:1px solid #ddd;border-radius:4px}.footer{margin-top:4px;font-size:9.5px;color:#bbb;text-align:right}@media print{.no-print{display:none}}@media screen{body{max-width:680px;margin:20px auto;padding:0 16px}}";
+  var h = '<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>'+_cEsc(title)+'</title><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR&family=Noto+Serif+KR:wght@700&display=swap" rel="stylesheet"><style>'+css+'</style></head><body>'
+   + '<h2>초진 접수 동의서</h2><p class="sub">작성일: '+_cEsc(today)+'</p>'
+   + '<table class="info-table"><tr><td>차트번호</td><td>'+_cEsc(chart)+'</td><td>성명</td><td>'+_cEsc(row.name)+'</td></tr><tr><td>주민번호 앞 6자리</td><td>'+_cEsc(row.id1)+'</td><td>주민번호 뒤 7자리</td><td>*******</td></tr><tr><td>전화번호</td><td>'+_cEsc(row.phone)+'</td><td>주소</td><td>'+_cEsc(row.addr)+'</td></tr></table>'
+   + '<h3>동의 항목</h3><table class="agree-table">'+rows+'</table>'
+   + '<div class="sig-section"><span class="sig-label">서명 (이름 정자)</span>'+sig+'<span class="footer" style="margin-left:auto">'+_cEsc(filename)+' | '+_cEsc(today)+'</span></div>';
+  if(!opts.noButton) h += '<button class="no-print" onclick="window.print()" style="margin-top:14px;padding:12px 28px;background:#1a3a5c;color:white;border:none;border-radius:8px;font-size:15px;cursor:pointer;font-family:\'Noto Sans KR\',sans-serif">🖨️ 인쇄 / PDF 저장</button>';
+  if(opts.autoPrint) h += '<scr'+'ipt>setTimeout(function(){window.print();},700);</scr'+'ipt>';
+  return h + '</body></html>';
+}
+
+// ══ 접수 실시간 알림: pad에서 초진 접수가 들어오면 동의서 팝업 ══
+var _cwBase = null, _cwSeen = {}, _cwQueue = [], _cwCur = null, _cwBusy = false;
+async function _cwPoll(){
+  if(_cwBusy) return; _cwBusy = true;
+  try{
+    var hdr = {apikey:SUPA_ANON, Authorization:'Bearer '+SUPA_ANON};
+    if(_cwBase === null){
+      var r0 = await fetch(SUPA_URL+'/rest/v1/chojin?select=created_at&order=created_at.desc&limit=1',{headers:hdr});
+      var j0 = await r0.json();
+      _cwBase = (Array.isArray(j0) && j0.length) ? j0[0].created_at : '1970-01-01T00:00:00+00:00';
+    } else {
+      var r = await fetch(SUPA_URL+'/rest/v1/chojin?select=*&order=created_at.asc&created_at=gt.'+encodeURIComponent(_cwBase),{headers:hdr});
+      var rows = await r.json();
+      if(Array.isArray(rows)) rows.forEach(function(x){
+        _cwBase = x.created_at;
+        if(!_cwSeen[x.id]){ _cwSeen[x.id]=1; _cwQueue.push(x); }
+      });
+    }
+    _cwShowNext();
+  }catch(e){ console.warn('접수 알림 확인 실패', e); }
+  finally{ _cwBusy = false; }
+}
+function _cwShowNext(){
+  if(_cwCur || !_cwQueue.length) return;
+  var lo = document.getElementById('loginOverlay');
+  if(lo && getComputedStyle(lo).display !== 'none') return; // 잠금 해제 후 표시
+  _cwCur = _cwQueue.shift();
+  document.getElementById('cw-frame').srcdoc = buildConsentHtml(_cwCur,{noButton:true});
+  document.getElementById('cw-title').textContent = '📥 새 초진 접수 — '+(_cwCur.name||'')+(_cwQueue.length?'  (대기 '+_cwQueue.length+'건)':'');
+  var b = document.getElementById('cw-save'); b.disabled=false; b.textContent='💾 저장 (챠트번호·전화번호)';
+  document.getElementById('cw-modal').style.display='block';
+  try{ var c=new (window.AudioContext||window.webkitAudioContext)(), o=c.createOscillator(); o.connect(c.destination); o.frequency.value=880; o.start(); setTimeout(function(){o.stop();c.close();},180);}catch(e){}
+}
+function cwClose(){
+  document.getElementById('cw-modal').style.display='none';
+  document.getElementById('cw-frame').srcdoc='';
+  _cwCur = null;
+  setTimeout(_cwShowNext,200);
+}
+async function cwSave(){
+  if(!_cwCur) return;
+  var row=_cwCur, chartNo=String(row.chart||'').trim();
+  if(!chartNo){ showToast('⚠️ 차트번호가 없습니다.'); return; }
+  var b=document.getElementById('cw-save'); b.disabled=true; b.textContent='저장 중...';
+  try{
+    var phone=(row.phone||'').replace(/[-\s]/g,'');
+    var pt=await sbGet('patients',{chart_no:'eq.'+chartNo,select:'chart_no,phone',limit:'1'});
+    if(!pt||pt.length===0){ await sbInsert('patients',{chart_no:chartNo,phone:phone,updated_at:new Date().toISOString()}); }
+    else if(!pt[0].phone && phone){ await sbUpsert('patients',{chart_no:chartNo,phone:phone,updated_at:new Date().toISOString()}); }
+    var today=today6();
+    var vd={chart_no:chartNo,visit_date:today,updated_at:new Date().toISOString()};
+    var ev=await sbGet('visits',{chart_no:'eq.'+chartNo,select:'id',limit:'1'});
+    if(ev&&ev.length>0){ await sbUpdate('visits',{chart_no:chartNo},vd); } else { await sbInsert('visits',vd); }
+    showToast('✅ 챠트 '+chartNo+' 저장 완료 (내원일 '+today+')');
+    b.textContent='✅ 저장됨';
+    setTimeout(cwClose,700);
+  }catch(e){
+    alert('❌ 저장 실패:\n'+e.message);
+    b.disabled=false; b.textContent='💾 저장 (챠트번호·전화번호)';
+  }
+}
+function cwPrint(){
+  var f=document.getElementById('cw-frame'); try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){}
+}
+setTimeout(function(){ _cwPoll(); setInterval(_cwPoll, 4000); }, 1500);
+
 function printModalPDF() {
   if (!currentModalData) return;
   const { row, table } = currentModalData;
+  if (table === 'chojin') {
+    const w0 = window.open('','_blank');
+    if (!w0) { showToast('팝업 차단을 해제해주세요.'); return; }
+    w0.document.write(buildConsentHtml(row)); w0.document.close();
+    return;
+  }
   const name = table === 'chojin' ? (row.name||'') : (row.visitor_name||'');
   const dt = new Date(row.created_at).toLocaleString('ko-KR');
   const content = document.getElementById('modal-body').innerHTML;
@@ -4687,50 +4808,11 @@ async function oneStopSave(id, btnId) {
     }
   } catch(e) { console.warn('챠트저장 오류:', e.message); }
 
-  // ② PDF 새창 + 자동 인쇄
+  // ② PDF 새창 + 자동 인쇄 (동의서 양식, 주민번호 뒷자리 가림)
   try {
-    const name = row.name || '';
-    const dt = new Date(row.created_at).toLocaleString('ko-KR');
-    const dateObj = new Date(row.created_at);
-    const chart = (row.chart || '').trim();
-    const yy = String(dateObj.getFullYear()).slice(2);
-    const mm = String(dateObj.getMonth()+1).padStart(2,'0');
-    const dd = String(dateObj.getDate()).padStart(2,'0');
-    const pdfFilename = chart + '신환동의서' + yy + mm + dd;
-    const idStr = (row.id1 || '') + ' - ' + (row.id2 || '');
-    const agreeFields = [[6,'개인정보 동의'],[7,'진단서 발급 동의'],[8,'본인확인 불가 동의'],[9,'서류환불 불가 동의'],[10,'상담료·검사비 동의'],[11,'CCTV 확인']];
-    let agreeRows = '';
-    agreeFields.forEach(function(pair) {
-      const n = pair[0], lbl = pair[1];
-      const val = row['agree' + n] || row['agree_' + n];
-      agreeRows += '<tr><td>' + lbl + '(' + n + ')</td><td>' + (val ? '✓' : '') + '</td></tr>';
-    });
-    const sigHtml = row.signature_url ? '<tr><td>서명</td><td><img src="' + row.signature_url + '" style="height:60px;"/></td></tr>' : '';
-    const tdS = 'padding:7px 6px;border-bottom:1px solid #eee;';
-    const bodyHtml =
-      '<table style="width:100%;border-collapse:collapse;font-size:13px;">' +
-      '<tr><td style="' + tdS + 'color:#666;width:140px;">접수일시</td><td style="' + tdS + '">' + dt + '</td></tr>' +
-      '<tr><td style="' + tdS + 'color:#666;">차트번호</td><td style="' + tdS + '">' + chart + '</td></tr>' +
-      '<tr><td style="' + tdS + 'color:#666;">성명</td><td style="' + tdS + '">' + name + '</td></tr>' +
-      '<tr><td style="' + tdS + 'color:#666;">주민번호</td><td style="' + tdS + '">' + idStr + '</td></tr>' +
-      '<tr><td style="' + tdS + 'color:#666;">전화번호</td><td style="' + tdS + '">' + (row.phone || '') + '</td></tr>' +
-      '<tr><td style="' + tdS + 'color:#666;">주소</td><td style="' + tdS + '">' + (row.address || '') + '</td></tr>' +
-      agreeRows + sigHtml + '</table>';
     const w = window.open('', '_blank');
-    if (w) {
-      w.document.write('<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>' + pdfFilename + '</title>' +
-        '<style>body{font-family:\'Noto Sans KR\',sans-serif;padding:20px;font-size:13px}' +
-        'table{width:100%;border-collapse:collapse}td{padding:7px 6px;border-bottom:1px solid #eee}' +
-        '@media print{.no-print{display:none!important}}</style>' +
-        '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap">' +
-        '</head><body>' +
-        '<h3 style="margin-bottom:14px;">초진 접수 — ' + name + ' (' + dt + ')</h3>' +
-        bodyHtml +
-        '<br><button class="no-print" onclick="window.print()" style="padding:10px 24px;background:#1a3a5c;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;">🖨️ 인쇄 / PDF 저장</button>' +
-        '<scr' + 'ipt>setTimeout(function(){window.print();},600);</scr' + 'ipt>' +
-        '</body></html>');
-      w.document.close();
-    } else { showToast('⚠️ 팝업 차단 해제 후 다시 시도하세요.'); }
+    if (w) { w.document.write(buildConsentHtml(row,{autoPrint:true})); w.document.close(); }
+    else { showToast('⚠️ 팝업 차단 해제 후 다시 시도하세요.'); }
   } catch(e) { console.warn('PDF 오류:', e.message); }
 
   btn.innerHTML = '✅ 완료!';
