@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>듀얼 메신저</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;background:#2a2a3e;}
+#container{display:flex;flex-direction:column;width:100%;height:100%;}
+.pane{flex:1;overflow:hidden;position:relative;}
+iframe{width:100%;height:100%;border:none;display:block;}
+#divider{height:5px;background:#534AB7;cursor:ns-resize;flex-shrink:0;position:relative;}
+#divider:hover,#divider.dragging{background:#7c6ef5;}
+#divider::after{content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:3px;border-radius:2px;background:rgba(255,255,255,0.35);}
+</style>
+</head>
+<body>
+<div id="container">
+  <div class="pane" id="pane-top">
+    <iframe src="mesenger_h.html" id="frame-top" allow="microphone; camera"></iframe>
+  </div>
+  <div id="divider"></div>
+  <div class="pane" id="pane-bottom">
+    <iframe src="messenger_s.html" id="frame-bottom" allow="microphone; camera"></iframe>
+  </div>
+</div>
+<script>
+const divider=document.getElementById('divider');
+const paneTop=document.getElementById('pane-top');
+const paneBottom=document.getElementById('pane-bottom');
+let dragging=false, startY=0, startTopH=0;
+
+divider.addEventListener('mousedown',e=>{
+  dragging=true;
+  startY=e.clientY;
+  startTopH=paneTop.getBoundingClientRect().height;
+  divider.classList.add('dragging');
+  document.body.style.userSelect='none';
+  document.body.style.cursor='ns-resize';
+});
+document.addEventListener('mousemove',e=>{
+  if(!dragging) return;
+  const delta=e.clientY-startY;
+  const total=document.getElementById('container').clientHeight-5;
+  let newH=startTopH+delta;
+  newH=Math.max(80,Math.min(total-80,newH));
+  paneTop.style.flex='none';
+  paneTop.style.height=newH+'px';
+  paneBottom.style.flex='1';
+});
+document.addEventListener('mouseup',()=>{
+  if(!dragging) return;
+  dragging=false;
+  divider.classList.remove('dragging');
+  document.body.style.userSelect='';
+  document.body.style.cursor='';
+});
+</script>
+</body>
+</html>
