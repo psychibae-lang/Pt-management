@@ -857,6 +857,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
       <div style="display:flex;align-items:center;gap:8px;">
         <span id="proxyCount" style="font-size:12px;color:var(--text2);"></span>
         <button class="btn btn-success" onclick="saveSelectedProxyPDF()" style="font-size:11px;padding:6px 10px;">🖨️ 선택 PDF 저장</button>
+        <button class="btn" onclick="deleteSelectedProxy()" style="font-size:11px;padding:6px 10px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;">🗑️ 선택 삭제</button>
         <button class="btn btn-primary" onclick="loadSpecialList('proxy')" style="font-size:11px;padding:6px 10px;">🔄 새로고침</button>
       </div>
     </div>
@@ -2229,6 +2230,26 @@ function updateProxyCheckAll(){
   var checkedCnt=document.querySelectorAll('.proxy-chk:checked').length;
   var allBox=document.getElementById('proxyCheckAll');
   if(allBox) allBox.checked = all.length>0 && checkedCnt===all.length;
+}
+
+async function deleteSelectedProxy(){
+  var ids=Array.from(document.querySelectorAll('.proxy-chk:checked')).map(function(c){return c.dataset.id;});
+  if(!ids.length){ showToast('⚠️ 삭제할 항목을 체크하세요.'); return; }
+  var rows=_proxyAllRows.filter(function(r){return ids.indexOf(String(r.id))>-1;});
+  var list=rows.slice(0,8).map(function(r){return '· 챠트 '+(r.chart||'-')+' / 방문자 '+(r.visitor_name||'-')+' / 환자 '+(r.patient_name||'-');}).join('\n');
+  if(rows.length>8) list+='\n… 외 '+(rows.length-8)+'건';
+  if(!confirm('선택한 대리처방 '+rows.length+'건을 삭제할까요?\n삭제하면 되돌릴 수 없습니다.\n\n'+list)) return;
+  var done=0, fail=0;
+  for(var i=0;i<ids.length;i++){
+    try{
+      var r=await fetch(SUPA_URL+'/rest/v1/daeri?id=eq.'+encodeURIComponent(ids[i]),{method:'DELETE',headers:Object.assign({},sbH(),{'Prefer':'return=representation'})});
+      var j=r.ok?await r.json():[];
+      if(Array.isArray(j)&&j.length>0) done++; else fail++;
+    }catch(e){ fail++; }
+  }
+  if(done>0) showToast('✅ '+done+'건 삭제 완료'+(fail?(' / 실패 '+fail+'건'):''));
+  else showToast('❌ 삭제되지 않았습니다. 원장(doctor) 계정으로 로그인했는지 확인하세요.');
+  loadSpecialList('proxy');
 }
 
 function proxyPdfRowHtml(r){
