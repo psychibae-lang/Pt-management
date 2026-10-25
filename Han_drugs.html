@@ -326,6 +326,19 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .cat-option.selected{border-color:var(--accent);background:var(--accent-soft);}
 @media(min-width:430px){.cat-edit-inner{border-radius:var(--radius);margin-bottom:20px;}}
 
+/* ── 글자·이미지 크기 조절 ── */
+:root{--txt:14px;--txt-s:12px;--imgh:240px;--lw:110px;--lh:68px;}
+.info-card-text,.interaction-desc{font-size:var(--txt) !important;}
+.badge{font-size:var(--txt-s) !important;}
+.drug-item-name{font-size:var(--txt) !important;}
+.detail-name{font-size:calc(var(--txt) + 6px) !important;}
+#detailImg{max-height:var(--imgh) !important;}
+.drug-icon{width:var(--lw) !important;height:var(--lh) !important;}
+.size-bar{display:flex;align-items:center;gap:6px;padding:8px 16px;background:#fff;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);flex-wrap:wrap;}
+.size-bar .sb-btn{width:28px;height:28px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;font-size:15px;line-height:1;color:var(--text);}
+.size-bar .sb-btn:hover{border-color:var(--accent);color:var(--accent);}
+.size-bar .sb-val{min-width:38px;text-align:center;font-weight:700;color:var(--accent);}
+.size-bar .sb-gap{width:10px;}
 </style>
 </head>
 <body>
@@ -387,6 +400,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
         <button class="search-clear" id="clearBtn" onclick="clearSearch()">✕</button>
       </div>
     </div>
+    <div class="size-bar"><span>🔤 글자</span><button class="sb-btn" onclick="adjSize('t',-1)">−</button><span class="sb-val sb-t">보통</span><button class="sb-btn" onclick="adjSize('t',1)">＋</button><span class="sb-gap"></span><span>🖼 이미지</span><button class="sb-btn" onclick="adjSize('i',-1)">−</button><span class="sb-val sb-i">보통</span><button class="sb-btn" onclick="adjSize('i',1)">＋</button></div>
     <div class="section-label" id="listLabel">전체 약물 목록</div>
     <div class="drug-list" id="drugList">
       <div class="empty-state">
@@ -415,6 +429,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
       <div class="detail-code" id="detailCode"></div>
       <span class="ai-tag">✨ AI 정보 보완</span>
     </div>
+    <div class="size-bar"><span>🔤 글자</span><button class="sb-btn" onclick="adjSize('t',-1)">−</button><span class="sb-val sb-t">보통</span><button class="sb-btn" onclick="adjSize('t',1)">＋</button><span class="sb-gap"></span><span>🖼 이미지</span><button class="sb-btn" onclick="adjSize('i',-1)">−</button><span class="sb-val sb-i">보통</span><button class="sb-btn" onclick="adjSize('i',1)">＋</button></div>
     <div class="tab-nav">
       <button class="tab-btn active" onclick="switchDetailTab('effect')">효능/효과</button>
       <button class="tab-btn" onclick="switchDetailTab('side')">부작용</button>
@@ -542,6 +557,27 @@ function getCat(dbCategory, fallbackName) {
   }
   return {label:'기타', cls:'other', icon:'💊'};
 }
+
+
+// ── 글자·이미지 크기 조절 (기기에 기억) ──
+const SZ_LABEL=['작게','보통','크게','더크게','최대'];
+const SZ_T=[[12,10],[14,12],[16,14],[18,16],[20,18]];
+const SZ_I=[[120,66,40],[180,88,54],[240,110,68],[300,132,82],[380,160,100]];
+let szT=2, szI=2;
+try{ const p=JSON.parse(localStorage.getItem('hd_sizes_v1')||'{}'); if(Number.isInteger(p.t)&&p.t>=0&&p.t<5)szT=p.t; if(Number.isInteger(p.i)&&p.i>=0&&p.i<5)szI=p.i; }catch(e){}
+function applySize(){
+  const r=document.documentElement.style;
+  r.setProperty('--txt',SZ_T[szT][0]+'px'); r.setProperty('--txt-s',SZ_T[szT][1]+'px');
+  r.setProperty('--imgh',SZ_I[szI][0]+'px'); r.setProperty('--lw',SZ_I[szI][1]+'px'); r.setProperty('--lh',SZ_I[szI][2]+'px');
+  document.querySelectorAll('.sb-t').forEach(e=>e.textContent=SZ_LABEL[szT]);
+  document.querySelectorAll('.sb-i').forEach(e=>e.textContent=SZ_LABEL[szI]);
+}
+function adjSize(k,d){
+  if(k==='t') szT=Math.max(0,Math.min(4,szT+d)); else szI=Math.max(0,Math.min(4,szI+d));
+  applySize();
+  try{ localStorage.setItem('hd_sizes_v1',JSON.stringify({t:szT,i:szI})); }catch(e){}
+}
+applySize();
 
 function sbH() {
   return {'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY};
