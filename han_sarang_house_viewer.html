@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>병원 가계 통계 - 데이터 뷰어</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; color: #1a1a18; min-height: 100vh; }
+
+/* ── 헤더 & 탭 ── */
+.header { background: #fff; border-bottom: 0.5px solid #ddddd5; padding: 14px 24px 0; }
+.header-top { display: flex; align-items: center; margin-bottom: 10px; }
+.header h1 { font-size: 18px; font-weight: 500; }
+.header .subtitle { font-size: 12px; color: #888780; margin-top: 2px; }
+.tabs { display: flex; gap: 0; border-bottom: none; }
+.tab { padding: 9px 22px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; background: none;
+  color: #888780; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; }
+.tab:hover { color: #1a1a18; }
+.tab.active { color: #1a1a18; border-bottom-color: #1a1a18; }
+
+/* ── 서브탭 ── */
+.subtabs { background: #fff; border-bottom: 0.5px solid #ddddd5; padding: 0 24px; display: flex; gap: 0; }
+.subtab { padding: 8px 18px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: none;
+  color: #888780; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; }
+.subtab:hover { color: #1a1a18; }
+.subtab.active { color: #185fa5; border-bottom-color: #185fa5; }
+
+.status-bar { padding: 7px 24px; font-size: 13px; }
+.status-bar.success { background: #eaf3de; color: #3b6d11; }
+.status-bar.error   { background: #fcebeb; color: #a32d2d; }
+.status-bar.loading { background: #e6f1fb; color: #185fa5; }
+
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── 컨트롤 바 ── */
+.controls { background: #fff; border-bottom: 0.5px solid #ddddd5; padding: 10px 24px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.ctrl-label { font-size: 13px; color: #888780; }
+.controls select, .controls input[type=date] {
+  border: 0.5px solid #b4b2a9; border-radius: 8px; padding: 7px 12px;
+  font-size: 13px; background: #fff; color: #1a1a18; width: auto;
+}
+.controls select:focus, .controls input:focus { outline: 2px solid #185fa5; outline-offset: 1px; }
+.controls .tilde { color: #888780; font-size: 13px; }
+button { border: 0.5px solid #1a1a18; border-radius: 8px; padding: 8px 18px; font-size: 13px; background: #1a1a18; color: #fff; font-weight: 500; cursor: pointer; }
+button:hover { background: #333; }
+button.secondary { background: #fff; color: #1a1a18; border-color: #b4b2a9; }
+button.secondary:hover { background: #f5f5f0; }
+.sort-hint { font-size: 12px; color: #b4b2a9; margin-left: auto; }
+
+.main { padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
+
+/* ── 통계 ── */
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.metric-card { background: #f1efe8; border-radius: 8px; padding: 14px 16px; }
+.metric-card .mlabel { font-size: 12px; color: #888780; margin-bottom: 4px; }
+.metric-card .mvalue { font-size: 22px; font-weight: 500; }
+.metric-card .msub { font-size: 12px; color: #888780; margin-top: 2px; }
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+@media (max-width: 700px) { .chart-grid { grid-template-columns: 1fr; } }
+.chart-card { background: #fff; border: 0.5px solid #ddddd5; border-radius: 12px; padding: 16px 18px; }
+.chart-card h3 { font-size: 14px; font-weight: 500; margin-bottom: 14px; color: #444441; }
+.chart-card.wide { grid-column: 1 / -1; }
+.chart-card canvas { max-height: 320px; }
+.table-card { background: #fff; border: 0.5px solid #ddddd5; border-radius: 12px; padding: 16px 18px; margin-bottom: 20px; }
+.table-card h3 { font-size: 14px; font-weight: 500; margin-bottom: 14px; color: #444441; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: right; color: #888780; font-weight: 500; padding: 7px 8px; border-bottom: 0.5px solid #ddddd5;
+  cursor: pointer; user-select: none; white-space: nowrap; }
+th:first-child { text-align: right; }
+th .arrow { font-size: 10px; margin-left: 3px; color: #185fa5; }
+td { padding: 8px 8px; border-bottom: 0.5px solid #f1efe8; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td:first-child { text-align: right; font-variant-numeric: initial; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #f5f5f0; }
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; }
+.badge-sun { background: #fcebeb; color: #a32d2d; }
+.table-scroll { overflow-x: auto; padding-bottom: 6px; }
+table { padding-right: 10px; }
+#detail-table, #h-detail-table, #k-detail-table { min-width: 100%; }
+#detail-table th:last-child, #h-detail-table th:last-child, #k-detail-table th:last-child,
+#detail-table td:last-child, #h-detail-table td:last-child, #k-detail-table td:last-child { padding-right: 18px; }
+
+#loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.85); align-items: center; justify-content: center; z-index: 200; flex-direction: column; gap: 12px; }
+#loading-overlay.visible { display: flex; }
+.spinner { width: 32px; height: 32px; border: 3px solid #ddddd5; border-top-color: #1a1a18; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty-msg { text-align: center; color: #888780; padding: 30px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div id="loading-overlay"><div class="spinner"></div><div style="font-size:13px;color:#888780;">불러오는 중...</div></div>
+
+<div class="header">
+  <div class="header-top">
+    <h1>🏥 병원 가계 통계</h1>
+  </div>
+  <div class="subtitle" style="margin-bottom:10px;">daily_han · Supabase</div>
+  <div class="tabs">
+    <button class="tab" id="tab-gen">데이터 생성</button>
+    <button class="tab active" id="tab-viewer">데이터 뷰어</button>
+  </div>
+</div>
+<div class="status-bar success" id="status-bar">✓ 연결됨</div>
+
+<div class="subtabs">
+  <button class="subtab active" id="sub-hangang" onclick="selectSub('hangang')">한강일일데이터</button>
+  <button class="subtab" id="sub-hospital" onclick="selectSub('hospital')">병원 데이터</button>
+  <button class="subtab" id="sub-household" onclick="selectSub('household')">가계데이터</button>
+</div>
+
+<div class="page active" id="page-hangang">
+  <div class="controls">
+    <span class="ctrl-label">기간:</span>
+    <select id="period-mode" onchange="onPeriodModeChange()">
+      <option value="year">연도별</option>
+      <option value="month">월별</option>
+      <option value="week">주별 (월~토)</option>
+      <option value="day">일별 날짜검색</option>
+    </select>
+
+    <span id="ctrl-year-range" style="display:none;">
+      <select id="year-from"></select>
+      <span class="tilde">~</span>
+      <select id="year-to"></select>
+    </span>
+
+    <span id="ctrl-month-year" style="display:none;">
+      <select id="month-year"></select>
+    </span>
+
+    <span id="ctrl-week-range" style="display:none;">
+      <input type="date" id="week-from">
+      <span class="tilde">~</span>
+      <input type="date" id="week-to">
+    </span>
+
+    <span id="ctrl-day-range" style="display:none;">
+      <input type="date" id="day-from">
+      <span class="tilde">~</span>
+      <input type="date" id="day-to">
+    </span>
+
+    <button onclick="runQuery()">조회</button>
+    <button class="secondary" onclick="refreshData()">↻ 새로고침</button>
+    <span class="sort-hint">← 항목 클릭으로 정렬</span>
+  </div>
+
+  <div class="main">
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="mlabel">총 매출</div>
+        <div class="mvalue" id="m-revenue">-</div>
+        <div class="msub" id="m-revenue-sub"></div>
+      </div>
+      <div class="metric-card">
+        <div class="mlabel">총 환자수</div>
+        <div class="mvalue" id="m-patients">-</div>
+        <div class="msub" id="m-patients-sub"></div>
+      </div>
+      <div class="metric-card">
+        <div class="mlabel">일평균 매출</div>
+        <div class="mvalue" id="m-avg-revenue">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="mlabel">일평균 환자수</div>
+        <div class="mvalue" id="m-avg-patients">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="mlabel">초진 환자</div>
+        <div class="mvalue" id="m-new">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="mlabel">청구액 합계</div>
+        <div class="mvalue" id="m-claim">-</div>
+      </div>
+    </div>
+
+    <div class="chart-card wide">
+      <h3 id="chart-title-revenue">매출</h3>
+      <canvas id="chart-revenue"></canvas>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3 id="chart-title-patients">환자수</h3>
+        <canvas id="chart-patients"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3 id="chart-title-new">초진환자수</h3>
+        <canvas id="chart-new"></canvas>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <h3 id="table-title">상세</h3>
+      <div class="table-scroll">
+        <table id="detail-table">
+          <thead><tr id="detail-thead"></tr></thead>
+          <tbody id="detail-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-hospital">
+  <div class="controls">
+    <span class="ctrl-label">기간:</span>
+    <select id="h-period-mode" onchange="onHPeriodModeChange()">
+      <option value="monthrange">월~월</option>
+      <option value="year">연도별</option>
+    </select>
+
+    <span id="h-ctrl-monthrange">
+      <input type="month" id="h-month-from">
+      <span class="tilde">~</span>
+      <input type="month" id="h-month-to">
+    </span>
+
+    <span id="h-ctrl-year" style="display:none;">
+      <select id="h-year-from"></select>
+      <span class="tilde">~</span>
+      <select id="h-year-to"></select>
+    </span>
+
+    <button onclick="runHQuery()">조회</button>
+    <button class="secondary" onclick="runHQuery()">↻ 새로고침</button>
+    <span class="sort-hint">Household_statistics · ← 항목 클릭으로 정렬</span>
+  </div>
+
+  <div class="main">
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="mlabel" id="h-m1-label">한강 매출</div>
+        <div class="mvalue" id="h-m1">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="mlabel">한강 실수입</div>
+        <div class="mvalue" id="h-m2">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="mlabel" id="h-m3-label">사랑 매출</div>
+        <div class="mvalue" id="h-m3">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="mlabel">사랑 실수입</div>
+        <div class="mvalue" id="h-m4">-</div>
+      </div>
+      <div class="metric-card" style="background:#e6f1fb;">
+        <div class="mlabel">총 합산 실수입</div>
+        <div class="mvalue" id="h-m5">-</div>
+      </div>
+    </div>
+
+    <div class="chart-card wide">
+      <h3 id="h-chart-title-main">매출·실수입 비교</h3>
+      <canvas id="h-chart-main"></canvas>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3 id="h-chart-title-han">한강 실수입</h3>
+        <canvas id="h-chart-han"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3 id="h-chart-title-sarang">사랑 실수입</h3>
+        <canvas id="h-chart-sarang"></canvas>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <h3 id="h-table-title">상세 (한강 + 사랑)</h3>
+      <div class="table-scroll">
+        <table id="h-detail-table">
+          <thead><tr id="h-detail-thead"></tr></thead>
+          <tbody id="h-detail-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-household">
+  <div class="controls">
+    <span class="ctrl-label">기간:</span>
+    <select id="k-period-mode" onchange="onKPeriodModeChange()">
+      <option value="monthrange">월~월</option>
+      <option value="year">연도별</option>
+    </select>
+
+    <span id="k-ctrl-monthrange">
+      <input type="month" id="k-month-from">
+      <span class="tilde">~</span>
+      <input type="month" id="k-month-to">
+    </span>
+
+    <span id="k-ctrl-year" style="display:none;">
+      <select id="k-year-from"></select>
+      <span class="tilde">~</span>
+      <select id="k-year-to"></select>
+    </span>
+
+    <button onclick="runKQuery()">조회</button>
+    <button class="secondary" onclick="runKQuery()">↻ 새로고침</button>
+    <span class="sort-hint">monthly_house · ← 항목 클릭으로 정렬</span>
+  </div>
+
+  <div class="main">
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="mlabel">D. 총합 (자산)</div>
+        <div class="mvalue" id="k-m1">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="mlabel">A. 현금</div>
+        <div class="mvalue" id="k-m2">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="mlabel">B. 장기현금</div>
+        <div class="mvalue" id="k-m3">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="mlabel">C. 연금성</div>
+        <div class="mvalue" id="k-m4">-</div>
+      </div>
+      <div class="metric-card" style="background:#e6f1fb;">
+        <div class="mlabel">수입합</div>
+        <div class="mvalue" id="k-m5">-</div>
+      </div>
+    </div>
+
+    <div class="chart-card wide">
+      <h3 id="k-chart-title-asset">자산 구성 (A/B/C/D) 추이</h3>
+      <canvas id="k-chart-asset"></canvas>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3 id="k-chart-title-income">매출·실수입 추이</h3>
+        <canvas id="k-chart-income"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3 id="k-chart-title-reserve">예비비 / 선교헌금 추이</h3>
+        <canvas id="k-chart-reserve"></canvas>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <h3 id="k-table-title">상세 (가계 자산 + 병원 수입)</h3>
+      <div class="table-scroll">
+        <table id="k-detail-table">
+          <thead><tr id="k-detail-thead"></tr></thead>
+          <tbody id="k-detail-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://algfzvbqxxvcaunlsrxd.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsZ2Z6dmJxeHh2Y2F1bmxzcnhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5MDM5MDQsImV4cCI6MjA5NDQ3OTkwNH0.lD9pIFoSw2lYY23zDMFbfeGvI0p_kcih61rScSh5a3s';
+const HDR = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+const DOW = ['일','월','화','수','목','금','토'];
+
+let currentMode = 'year';
+let currentRows = []; // raw daily_han rows fetched for current query
+let detailRows = [];  // aggregated rows currently shown in detail table
+let detailCols = [];  // column definitions for current mode
+let sortState = { key: null, dir: 1 };
+let chartRevenue=null, chartPatients=null, chartNew=null;
+
+function loading(v){ document.getElementById('loading-overlay').classList.toggle('visible', !!v); }
+function setStatus(msg, type){
+  const el = document.getElementById('status-bar');
+  el.textContent = msg;
+  el.className = 'status-bar ' + (type||'success');
+}
+
+/* ── 연/월 셀렉트 초기화 ── */
+function initSelectors(){
+  const thisYear = new Date().getFullYear();
+  const startYear = 2013;
+  const yf = document.getElementById('year-from');
+  const yt = document.getElementById('year-to');
+  const my = document.getElementById('month-year');
+  yf.innerHTML=''; yt.innerHTML=''; my.innerHTML='';
+  for(let y=thisYear; y>=startYear; y--){
+    yf.innerHTML += `<option value="${y}">${y}</option>`;
+    yt.innerHTML += `<option value="${y}">${y}</option>`;
+    my.innerHTML += `<option value="${y}">${y}</option>`;
+  }
+  yf.value = thisYear;
+  yt.value = thisYear;
+  my.value = thisYear;
+
+  const today = new Date();
+  const monthAgo = new Date(today); monthAgo.setMonth(monthAgo.getMonth()-1);
+  document.getElementById('day-to').value = fmtDate(today);
+  document.getElementById('day-from').value = fmtDate(monthAgo);
+
+  const weeksAgo = new Date(today); weeksAgo.setDate(weeksAgo.getDate()-7*8);
+  document.getElementById('week-to').value = fmtDate(today);
+  document.getElementById('week-from').value = fmtDate(weeksAgo);
+}
+function fmtDate(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+function onPeriodModeChange(){
+  currentMode = document.getElementById('period-mode').value;
+  document.getElementById('ctrl-year-range').style.display = currentMode==='year' ? 'inline-flex' : 'none';
+  document.getElementById('ctrl-month-year').style.display = currentMode==='month' ? 'inline-flex' : 'none';
+  document.getElementById('ctrl-week-range').style.display = currentMode==='week' ? 'inline-flex' : 'none';
+  document.getElementById('ctrl-day-range').style.display = currentMode==='day' ? 'inline-flex' : 'none';
+}
+
+/* ── 숫자 포맷 ── */
+function won(n){ return n==null ? '-' : Math.round(n).toLocaleString(); }
+function bigWon(n){
+  if(n==null) return '-';
+  const abs=Math.abs(n);
+  if(abs>=100000000) return (n/100000000).toFixed(1)+'억';
+  if(abs>=10000) return Math.round(n/10000).toLocaleString()+'만';
+  return Math.round(n).toLocaleString();
+}
+function manTick(v){ return (v/10000).toLocaleString()+'만'; }
+
+/* ── 데이터 조회 ── */
+async function fetchRange(fromDate, toDate){
+  const PAGE = 1000; // Supabase/PostgREST default max rows per request
+  const url = `${SUPABASE_URL}/rest/v1/daily_han?select=*&date=gte.${fromDate}&date=lte.${toDate}&order=date.asc`;
+  let all = [];
+  let offset = 0;
+  while(true){
+    const res = await fetch(url, {
+      headers: { ...HDR, 'Range-Unit': 'items', 'Range': `${offset}-${offset+PAGE-1}` }
+    });
+    if(!res.ok){ const e = await res.json().catch(()=>({})); throw new Error(e.message || `HTTP ${res.status}`); }
+    const page = await res.json();
+    all = all.concat(page);
+    if(page.length < PAGE) break; // last page reached
+    offset += PAGE;
+  }
+  return all;
+}
+
+let prevYearRows = [];
+async function runQuery(){
+  loading(true);
+  try{
+    let fromDate, toDate;
+    prevYearRows = [];
+    if(currentMode==='year'){
+      const yf = +document.getElementById('year-from').value;
+      const yt = +document.getElementById('year-to').value;
+      const lo = Math.min(yf,yt), hi = Math.max(yf,yt);
+      fromDate = `${lo}-01-01`; toDate = `${hi}-12-31`;
+    } else if(currentMode==='month'){
+      const y = +document.getElementById('month-year').value;
+      fromDate = `${y}-01-01`; toDate = `${y}-12-31`;
+    } else if(currentMode==='week'){
+      fromDate = document.getElementById('week-from').value;
+      toDate = document.getElementById('week-to').value;
+      if(!fromDate || !toDate){ setStatus('⚠ 날짜를 선택하세요','error'); loading(false); return; }
+    } else {
+      fromDate = document.getElementById('day-from').value;
+      toDate = document.getElementById('day-to').value;
+      if(!fromDate || !toDate){ setStatus('⚠ 날짜를 선택하세요','error'); loading(false); return; }
+    }
+    currentRows = await fetchRange(fromDate, toDate);
+    if(currentMode==='month'){
+      const y = +document.getElementById('month-year').value;
+      try{ prevYearRows = await fetchRange(`${y-1}-01-01`, `${y-1}-12-31`); }catch(e){ prevYearRows = []; }
+    }
+    renderAll();
+    setStatus('✓ 연결됨','success');
+  }catch(e){
+    setStatus('⚠ 조회 실패: '+e.message,'error');
+  }finally{
+    loading(false);
+  }
+}
+function refreshData(){ runQuery(); }
+
+/* ── 집계 ── */
+function aggregateByKey(rows, keyFn, labelFn){
+  const map = new Map();
+  rows.forEach(r=>{
+    const k = keyFn(r);
+    if(!map.has(k)){
+      map.set(k, {key:k, label:labelFn(r,k), revenue:0, patients:0, newp:0, cash:0, card:0, claim:0, days:0});
+    }
+    const g = map.get(k);
+    g.revenue += r.daily_revenue||0;
+    g.patients += r.total_patients||0;
+    g.newp += r.new_patients||0;
+    g.cash += r.cash||0;
+    g.card += r.card||0;
+    g.claim += r.insurance_claim||0;
+    if((r.total_patients||0) > 0) g.days += 1; // 휴진일(환자 0명)은 진료일에서 제외
+  });
+  return Array.from(map.values()).sort((a,b)=>a.key.localeCompare(b.key));
+}
+
+function renderAll(){
+  if(currentMode==='year'){
+    renderYearMode();
+  } else if(currentMode==='month'){
+    renderMonthMode();
+  } else if(currentMode==='week'){
+    renderWeekMode();
+  } else {
+    renderDayMode();
+  }
+}
+
+function computeSummary(rows){
+  let revenue=0, patients=0, newp=0, claim=0, days=0;
+  rows.forEach(r=>{
+    revenue += r.daily_revenue||0;
+    patients += r.total_patients||0;
+    newp += r.new_patients||0;
+    claim += r.insurance_claim||0;
+    if((r.total_patients||0)>0 || r.daily_revenue) days += 1;
+  });
+  const avgRevenue = days? revenue/days : 0;
+  const avgPatients = days? patients/days : 0;
+  return {revenue, patients, newp, claim, days, avgRevenue, avgPatients};
+}
+
+function setSummary(s){
+  document.getElementById('m-revenue').textContent = bigWon(s.revenue);
+  document.getElementById('m-revenue-sub').textContent = won(s.revenue)+'원';
+  document.getElementById('m-patients').textContent = s.patients.toLocaleString()+'명';
+  document.getElementById('m-patients-sub').textContent = '진료일 '+s.days+'일';
+  document.getElementById('m-avg-revenue').textContent = bigWon(s.avgRevenue);
+  document.getElementById('m-avg-patients').textContent = Math.round(s.avgPatients)+'명';
+  document.getElementById('m-new').textContent = s.newp.toLocaleString()+'명';
+  document.getElementById('m-claim').textContent = bigWon(s.claim);
+}
+
+function renderYearMode(){
+  const groups = aggregateByKey(currentRows, r=>r.date.slice(0,4), (r,k)=>k);
+  setSummary(computeSummary(currentRows));
+  const yf = document.getElementById('year-from').value, yt = document.getElementById('year-to').value;
+  document.getElementById('chart-title-revenue').textContent = `${yf}~${yt} 연도별 매출`;
+  document.getElementById('chart-title-patients').textContent = `${yf}~${yt} 연도별 환자수`;
+  document.getElementById('chart-title-new').textContent = `${yf}~${yt} 연도별 초진환자수`;
+  document.getElementById('table-title').textContent = '연도별 상세';
+
+  drawCharts(groups.map(g=>g.key), groups.map(g=>g.revenue), groups.map(g=>g.patients), groups.map(g=>g.newp));
+
+  detailCols = [
+    {key:'key', label:'연도', type:'text'},
+    {key:'revenue', label:'매출', type:'num'},
+    {key:'patients', label:'환자수', type:'num'},
+    {key:'newp', label:'초진', type:'num'},
+    {key:'avgRevenue', label:'일평균매출', type:'num'},
+    {key:'avgPatients', label:'일평균환자', type:'num'},
+    {key:'days', label:'진료일', type:'num'},
+  ];
+  detailRows = groups.map(g=>({...g, avgRevenue: g.days? g.revenue/g.days : 0, avgPatients: g.days? g.patients/g.days : 0}));
+  sortState = {key:null, dir:1};
+  renderDetailTable();
+}
+
+function pct(curr, prev){
+  if(prev==null || prev===0) return null;
+  return ((curr-prev)/prev)*100;
+}
+
+function renderMonthMode(){
+  const y = document.getElementById('month-year').value;
+  const groupsRaw = aggregateByKey(currentRows, r=>r.date.slice(0,7), (r,k)=>k);
+  const byMonth = new Map(groupsRaw.map(g=>[g.key.slice(5,7), g]));
+  const prevGroupsRaw = aggregateByKey(prevYearRows, r=>r.date.slice(0,7), (r,k)=>k);
+  const prevByMonth = new Map(prevGroupsRaw.map(g=>[g.key.slice(5,7), g]));
+  const hasPrev = prevYearRows.length > 0;
+
+  // 항상 01~12월 표시 (데이터 없는 달은 0)
+  const groups = [];
+  for(let m=1; m<=12; m++){
+    const mm = String(m).padStart(2,'0');
+    const g = byMonth.get(mm) || {key:`${y}-${mm}`, revenue:0, patients:0, newp:0, cash:0, card:0, claim:0, days:0};
+    const pg = prevByMonth.get(mm);
+    groups.push({
+      ...g,
+      key: `${y}-${mm}`,
+      prevRevenue: pg ? pg.revenue : null,
+      prevPatients: pg ? pg.patients : null,
+      revenuePct: pg ? pct(g.revenue, pg.revenue) : null,
+      patientsPct: pg ? pct(g.patients, pg.patients) : null,
+    });
+  }
+
+  setSummary(computeSummary(currentRows));
+  document.getElementById('chart-title-revenue').textContent = `${y}년 월별 매출` + (hasPrev ? ` (전년 비교)` : '');
+  document.getElementById('chart-title-patients').textContent = `${y}년 월별 환자수` + (hasPrev ? ` (전년 비교)` : '');
+  document.getElementById('chart-title-new').textContent = `${y}년 월별 초진환자수`;
+  document.getElementById('table-title').textContent = '월별 상세' + (hasPrev ? ` (전년 ${y-1} 비교)` : '');
+
+  const labels = groups.map(g=>g.key.slice(5)+'월');
+  drawCharts(
+    labels, groups.map(g=>g.revenue), groups.map(g=>g.patients), groups.map(g=>g.newp),
+    hasPrev ? groups.map(g=>g.prevRevenue) : null,
+    hasPrev ? groups.map(g=>g.prevPatients) : null
+  );
+
+  detailCols = [
+    {key:'key', label:'월', type:'text'},
+    {key:'revenue', label:'매출', type:'num'},
+    {key:'patients', label:'환자수', type:'num'},
+    {key:'newp', label:'초진', type:'num'},
+    {key:'cash', label:'현금', type:'num'},
+    {key:'card', label:'카드', type:'num'},
+    {key:'claim', label:'청구액', type:'num'},
+    {key:'days', label:'진료일', type:'num'},
+  ];
+  if(hasPrev){
+    detailCols.push(
+      {key:'prevRevenue', label:'전년매출', type:'num'},
+      {key:'revenuePct', label:'매출증감(%)', type:'pct'},
+      {key:'prevPatients', label:'전년환자', type:'num'},
+      {key:'patientsPct', label:'환자증감(%)', type:'pct'},
+    );
+  }
+  detailRows = groups;
+  sortState = {key:null, dir:1};
+  renderDetailTable();
+}
+
+function renderDayMode(){
+  setSummary(computeSummary(currentRows));
+  const fromDate = document.getElementById('day-from').value, toDate = document.getElementById('day-to').value;
+  document.getElementById('chart-title-revenue').textContent = `${fromDate}~${toDate} 일별 매출`;
+  document.getElementById('chart-title-patients').textContent = `${fromDate}~${toDate} 일별 환자수`;
+  document.getElementById('chart-title-new').textContent = `${fromDate}~${toDate} 일별 초진환자수`;
+  document.getElementById('table-title').textContent = `일별 상세 (${currentRows.length}건)`;
+
+  drawCharts(currentRows.map(r=>r.date.slice(5)), currentRows.map(r=>r.daily_revenue||0), currentRows.map(r=>r.total_patients||0), currentRows.map(r=>r.new_patients||0));
+
+  detailCols = [
+    {key:'date', label:'날짜', type:'text'},
+    {key:'day_of_week', label:'요일', type:'dow'},
+    {key:'daily_revenue', label:'매출', type:'num'},
+    {key:'total_patients', label:'환자', type:'num'},
+    {key:'new_patients', label:'초진', type:'num'},
+    {key:'cash', label:'현금', type:'num'},
+    {key:'card', label:'카드', type:'num'},
+    {key:'insurance_claim', label:'청구액', type:'num'},
+    {key:'deposit', label:'입금', type:'num'},
+  ];
+  detailRows = currentRows.slice().sort((a,b)=>b.date.localeCompare(a.date));
+  sortState = {key:null, dir:1};
+  renderDetailTable();
+}
+
+/* ── 주별(월~토) 집계 ── */
+function mondayKeyStr(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  const day = d.getDay(); // 0=일 ... 6=토
+  const diff = day===0 ? -6 : (1-day); // 그 주의 월요일로 이동
+  d.setDate(d.getDate()+diff);
+  return fmtDate(d);
+}
+function weekRangeLabel(mondayStr){
+  const mon = new Date(mondayStr+'T00:00:00');
+  const sat = new Date(mon); sat.setDate(sat.getDate()+5);
+  const f = d => `${d.getMonth()+1}/${d.getDate()}`;
+  return `${f(mon)}~${f(sat)}`;
+}
+
+function renderWeekMode(){
+  // 일요일(휴진)은 주별 집계에서 제외
+  const rows = currentRows.filter(r => new Date(r.date+'T00:00:00').getDay() !== 0);
+  const groups = aggregateByKey(rows, r=>mondayKeyStr(r.date), (r,k)=>k);
+  const groupsLabeled = groups.map(g=>({
+    ...g,
+    weekLabel: weekRangeLabel(g.key),
+    avgRevenue: g.days ? g.revenue/g.days : 0,
+    avgPatients: g.days ? g.patients/g.days : 0,
+  }));
+
+  setSummary(computeSummary(rows));
+  const wf = document.getElementById('week-from').value, wt = document.getElementById('week-to').value;
+  document.getElementById('chart-title-revenue').textContent = `${wf}~${wt} 주별 매출 (월~토)`;
+  document.getElementById('chart-title-patients').textContent = `${wf}~${wt} 주별 환자수 (월~토)`;
+  document.getElementById('chart-title-new').textContent = `${wf}~${wt} 주별 초진환자수 (월~토)`;
+  document.getElementById('table-title').textContent = '주별 상세 (월~토, 일요일 제외)';
+
+  drawCharts(groupsLabeled.map(g=>g.weekLabel), groupsLabeled.map(g=>g.revenue), groupsLabeled.map(g=>g.patients), groupsLabeled.map(g=>g.newp));
+
+  detailCols = [
+    {key:'weekLabel', label:'주(월~토)', type:'text'},
+    {key:'key', label:'주시작(월)', type:'text'},
+    {key:'revenue', label:'매출', type:'num'},
+    {key:'patients', label:'환자수', type:'num'},
+    {key:'newp', label:'초진', type:'num'},
+    {key:'avgRevenue', label:'일평균매출', type:'num'},
+    {key:'avgPatients', label:'일평균환자', type:'num'},
+    {key:'days', label:'진료일', type:'num'},
+  ];
+  detailRows = groupsLabeled;
+  sortState = {key:null, dir:1};
+  renderDetailTable();
+}
+
+
+function drawCharts(labels, revenue, patients, newp, prevRevenue, prevPatients){
+  if(chartRevenue) chartRevenue.destroy();
+  if(chartPatients) chartPatients.destroy();
+  if(chartNew) chartNew.destroy();
+
+  const revDatasets = [{ label:'매출', data: revenue, backgroundColor:'#1f5fa8', borderRadius:3, order:2 }];
+  if(prevRevenue){
+    revDatasets.push({ label:'전년 매출', data: prevRevenue, type:'line', borderColor:'#c94f4f', backgroundColor:'#c94f4f', borderDash:[5,4], pointRadius:2, tension:.25, fill:false, order:1 });
+  }
+  chartRevenue = new Chart(document.getElementById('chart-revenue'), {
+    type:'bar',
+    data:{ labels, datasets: revDatasets },
+    options:{ plugins:{legend:{display: !!prevRevenue}}, scales:{ y:{ ticks:{ callback:manTick } } } }
+  });
+
+  const patDatasets = [{ label:'환자수', data: patients, borderColor:'#3b6d11', backgroundColor:'rgba(59,109,17,0.08)', fill:true, tension:.3, pointRadius:3 }];
+  if(prevPatients){
+    patDatasets.push({ label:'전년 환자수', data: prevPatients, borderColor:'#c94f4f', backgroundColor:'rgba(201,79,79,0.08)', borderDash:[5,4], fill:false, tension:.3, pointRadius:2 });
+  }
+  chartPatients = new Chart(document.getElementById('chart-patients'), {
+    type:'line',
+    data:{ labels, datasets: patDatasets },
+    options:{ plugins:{legend:{display: !!prevPatients}} }
+  });
+
+  chartNew = new Chart(document.getElementById('chart-new'), {
+    type:'bar',
+    data:{ labels, datasets:[{ data: newp, backgroundColor:'#c9852f', borderRadius:3 }] },
+    options:{ plugins:{legend:{display:false}} }
+  });
+}
+
+/* ── 상세 테이블 (정렬 가능) ── */
+function renderDetailTable(){
+  const thead = document.getElementById('detail-thead');
+  thead.innerHTML = detailCols.map(c=>{
+    let arrow='';
+    if(sortState.key===c.key) arrow = `<span class="arrow">${sortState.dir===1?'▲':'▼'}</span>`;
+    return `<th onclick="sortDetail('${c.key}')">${c.label}${arrow}</th>`;
+  }).join('');
+
+  const tbody = document.getElementById('detail-tbody');
+  if(!detailRows.length){
+    tbody.innerHTML = `<tr><td colspan="${detailCols.length}" class="empty-msg">데이터 없음</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = detailRows.map(r=>{
+    return '<tr>' + detailCols.map(c=>{
+      const v = r[c.key];
+      if(c.type==='num') return `<td>${v!=null?won(v):'-'}</td>`;
+      if(c.type==='dow') return `<td>${v==='일'?'<span class="badge badge-sun">일</span>':(v||'-')}</td>`;
+      if(c.type==='pct'){
+        if(v==null) return `<td style="color:#b4b2a9;">-</td>`;
+        const up = v>=0;
+        const color = up ? '#3b6d11' : '#a32d2d';
+        const arrow = up ? '▲' : '▼';
+        return `<td style="color:${color};font-weight:500;">${arrow} ${Math.abs(v).toFixed(1)}%</td>`;
+      }
+      return `<td>${v!=null?v:'-'}</td>`;
+    }).join('') + '</tr>';
+  }).join('');
+}
+
+function sortDetail(key){
+  if(sortState.key===key){ sortState.dir *= -1; } else { sortState = {key, dir:1}; }
+  detailRows.sort((a,b)=>{
+    const va=a[key], vb=b[key];
+    if(va==null && vb==null) return 0;
+    if(va==null) return 1;
+    if(vb==null) return -1;
+    if(typeof va==='number' && typeof vb==='number') return (va-vb)*sortState.dir;
+    return String(va).localeCompare(String(vb))*sortState.dir;
+  });
+  renderDetailTable();
+}
+
+let hospitalInited = false;
+let householdInited = false;
+function selectSub(name){
+  document.querySelectorAll('.subtab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('sub-'+name).classList.add('active');
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(name==='hospital' && !hospitalInited){
+    hospitalInited = true;
+    initHSelectors();
+    onHPeriodModeChange();
+    runHQuery();
+  }
+  if(name==='household' && !householdInited){
+    householdInited = true;
+    initKSelectors();
+    onKPeriodModeChange();
+    runKQuery();
+  }
+}
+
+document.getElementById('tab-gen').addEventListener('click', function(){
+  // data_generation.html과 같은 폴더에 함께 배치된 경우 해당 페이지로 이동
+  // (iframe 안에서 열린 경우 부모 창을 이동시켜 자연스럽게 전환)
+  try{
+    if(window.parent && window.parent !== window){
+      window.parent.location.href = 'data_generation.html';
+    }else{
+      window.location.href = 'data_generation.html';
+    }
+  }catch(e){
+    window.location.href = 'data_generation.html';
+  }
+});
+
+/* ════════════════════════════════════════════
+   병원 데이터 (monthly_house: 한강의원 + 사랑의원)
+   ════════════════════════════════════════════ */
+let hMode = 'monthrange';
+let hRows = [];        // raw monthly_house rows for current range
+let hPrevRows = [];    // previous-year rows (연도별 모드 비교용)
+let hDetailRows = [];
+let hDetailCols = [];
+let hSortState = { key:null, dir:1 };
+let hChartMain=null, hChartHan=null, hChartSarang=null;
+
+function initHSelectors(){
+  const thisYear = new Date().getFullYear();
+  const startYear = 2013;
+  const yf = document.getElementById('h-year-from');
+  const yt = document.getElementById('h-year-to');
+  yf.innerHTML=''; yt.innerHTML='';
+  for(let y=thisYear; y>=startYear; y--){
+    yf.innerHTML += `<option value="${y}">${y}</option>`;
+    yt.innerHTML += `<option value="${y}">${y}</option>`;
+  }
+  yf.value = thisYear; yt.value = thisYear;
+
+  const t = new Date();
+  const ymNow = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}`;
+  const sixAgo = new Date(t); sixAgo.setMonth(sixAgo.getMonth()-5);
+  const ymFrom = `${sixAgo.getFullYear()}-${String(sixAgo.getMonth()+1).padStart(2,'0')}`;
+  document.getElementById('h-month-from').value = ymFrom;
+  document.getElementById('h-month-to').value = ymNow;
+}
+
+function onHPeriodModeChange(){
+  hMode = document.getElementById('h-period-mode').value;
+  document.getElementById('h-ctrl-monthrange').style.display = hMode==='monthrange' ? 'inline-flex' : 'none';
+  document.getElementById('h-ctrl-year').style.display = hMode==='year' ? 'inline-flex' : 'none';
+}
+
+async function fetchMonthlyHouse(fromYM, toYM){
+  const url = `${SUPABASE_URL}/rest/v1/monthly_house?select=*&year_month=gte.${fromYM}&year_month=lte.${toYM}&order=year_month.asc`;
+  const res = await fetch(url, { headers: HDR });
+  if(!res.ok){ const e = await res.json().catch(()=>({})); throw new Error(e.message || `HTTP ${res.status}`); }
+  return await res.json();
+}
+
+function hNum(r,k){ return r && r[k]!=null ? r[k] : 0; }
+
+async function runHQuery(){
+  loading(true);
+  try{
+    hPrevRows = [];
+    if(hMode==='monthrange'){
+      let fromYM = document.getElementById('h-month-from').value;
+      let toYM = document.getElementById('h-month-to').value;
+      if(!fromYM || !toYM){ setStatus('⚠ 기간을 선택하세요','error'); loading(false); return; }
+      if(fromYM > toYM){ [fromYM, toYM] = [toYM, fromYM]; }
+      hRows = await fetchMonthlyHouse(fromYM, toYM);
+    }else{
+      const yf = +document.getElementById('h-year-from').value;
+      const yt = +document.getElementById('h-year-to').value;
+      const lo = Math.min(yf,yt), hi = Math.max(yf,yt);
+      hRows = await fetchMonthlyHouse(`${lo}-01`, `${hi}-12`);
+      try{ hPrevRows = await fetchMonthlyHouse(`${lo-1}-01`, `${lo-1}-12`); }catch(e){ hPrevRows = []; }
+    }
+    renderHAll();
+    setStatus('✓ 연결됨','success');
+  }catch(e){
+    setStatus('⚠ 조회 실패: '+e.message,'error');
+  }finally{
+    loading(false);
+  }
+}
+
+function hGroupRow(rows){
+  let hanRev=0, hanNet=0, sarRev=0, sarNet=0;
+  rows.forEach(r=>{ hanRev+=hNum(r,'han_revenue'); hanNet+=hNum(r,'han_net'); sarRev+=hNum(r,'sarang_revenue'); sarNet+=hNum(r,'sarang_net'); });
+  return { hanRev, hanNet, sarRev, sarNet, total: hanNet+sarNet };
+}
+
+function renderHAll(){
+  if(hMode==='monthrange') renderHMonthRange();
+  else renderHYear();
+}
+
+function setHSummary(g){
+  document.getElementById('h-m1').textContent = bigWon(g.hanRev);
+  document.getElementById('h-m2').textContent = bigWon(g.hanNet);
+  document.getElementById('h-m3').textContent = bigWon(g.sarRev);
+  document.getElementById('h-m4').textContent = bigWon(g.sarNet);
+  document.getElementById('h-m5').textContent = bigWon(g.total);
+}
+
+function renderHMonthRange(){
+  const groups = hRows.map(r=>({
+    key:r.year_month, hanRev:hNum(r,'han_revenue'), hanNet:hNum(r,'han_net'),
+    sarRev:hNum(r,'sarang_revenue'), sarNet:hNum(r,'sarang_net'),
+  }));
+  groups.forEach(g=>g.total = g.hanNet+g.sarNet);
+  setHSummary(hGroupRow(hRows));
+
+  const fromYM = document.getElementById('h-month-from').value, toYM = document.getElementById('h-month-to').value;
+  document.getElementById('h-chart-title-main').textContent = `${fromYM}~${toYM} 월별 매출·실수입 비교`;
+  document.getElementById('h-chart-title-han').textContent = `한강 월별 실수입`;
+  document.getElementById('h-chart-title-sarang').textContent = `사랑 월별 실수입`;
+  document.getElementById('h-table-title').textContent = '월별 상세 (한강 + 사랑)';
+
+  const labels = groups.map(g=>g.key);
+  drawHMainChart(labels, groups);
+  drawHNetCharts(labels, groups);
+
+  hDetailCols = [
+    {key:'key', label:'월', type:'text'},
+    {key:'hanRev', label:'한강매출', type:'num'},
+    {key:'hanNet', label:'한강실수입', type:'num'},
+    {key:'sarRev', label:'사랑매출', type:'num'},
+    {key:'sarNet', label:'사랑실수입', type:'num'},
+    {key:'total', label:'합산실수입', type:'num'},
+  ];
+  hDetailRows = groups;
+  hSortState = {key:null, dir:1};
+  renderHDetailTable();
+}
+
+function renderHYear(){
+  const byYear = new Map();
+  hRows.forEach(r=>{
+    const y = r.year_month.slice(0,4);
+    if(!byYear.has(y)) byYear.set(y, []);
+    byYear.get(y).push(r);
+  });
+  const prevByYear = new Map();
+  hPrevRows.forEach(r=>{
+    const y = r.year_month.slice(0,4);
+    if(!prevByYear.has(y)) prevByYear.set(y, []);
+    prevByYear.get(y).push(r);
+  });
+
+  const years = Array.from(byYear.keys()).sort();
+  const groups = years.map(y=>{
+    const g = hGroupRow(byYear.get(y));
+    const py = String(+y-1);
+    const prevRowsForYear = byYear.has(py) ? byYear.get(py) : (prevByYear.get(py)||null);
+    const pg = prevRowsForYear ? hGroupRow(prevRowsForYear) : null;
+    return { key:y, ...g, prevTotal: pg ? pg.total : null, totalPct: pg ? pct(g.total, pg.total) : null };
+  });
+  const hasPrev = groups.some(g=>g.prevTotal!=null);
+
+  setHSummary(hGroupRow(hRows));
+  document.getElementById('h-chart-title-main').textContent = `연도별 매출·실수입 비교` + (hasPrev?' (전년 비교)':'');
+  document.getElementById('h-chart-title-han').textContent = `한강 연도별 실수입`;
+  document.getElementById('h-chart-title-sarang').textContent = `사랑 연도별 실수입`;
+  document.getElementById('h-table-title').textContent = '연도별 상세 (한강 + 사랑)' + (hasPrev?' · 전년 비교':'');
+
+  const labels = groups.map(g=>g.key);
+  drawHMainChart(labels, groups, hasPrev ? groups.map(g=>g.prevTotal) : null);
+  drawHNetCharts(labels, groups);
+
+  hDetailCols = [
+    {key:'key', label:'연도', type:'text'},
+    {key:'hanRev', label:'한강매출', type:'num'},
+    {key:'hanNet', label:'한강실수입', type:'num'},
+    {key:'sarRev', label:'사랑매출', type:'num'},
+    {key:'sarNet', label:'사랑실수입', type:'num'},
+    {key:'total', label:'합산실수입', type:'num'},
+  ];
+  if(hasPrev){
+    hDetailCols.push({key:'prevTotal', label:'전년합산실수입', type:'num'}, {key:'totalPct', label:'증감(%)', type:'pct'});
+  }
+  hDetailRows = groups;
+  hSortState = {key:null, dir:1};
+  renderHDetailTable();
+}
+
+function drawHMainChart(labels, groups, prevTotalLine){
+  if(hChartMain) hChartMain.destroy();
+  const datasets = [
+    { label:'한강매출', data: groups.map(g=>g.hanRev), backgroundColor:'#1f5fa8' },
+    { label:'사랑매출', data: groups.map(g=>g.sarRev), backgroundColor:'#3b6d11' },
+    { label:'한강실수입', data: groups.map(g=>g.hanNet), backgroundColor:'#a9c9ec' },
+    { label:'사랑실수입', data: groups.map(g=>g.sarNet), backgroundColor:'#cfe3bb' },
+  ];
+  if(prevTotalLine){
+    datasets.push({ label:'전년 합산실수입', type:'line', data: prevTotalLine, borderColor:'#a32d2d', backgroundColor:'#a32d2d', borderDash:[5,4], pointRadius:3, fill:false, tension:.25 });
+  }
+  hChartMain = new Chart(document.getElementById('h-chart-main'), {
+    type:'bar',
+    data:{ labels, datasets },
+    options:{ plugins:{legend:{display:true, labels:{boxWidth:12, font:{size:11}}}}, scales:{ y:{ ticks:{ callback:manTick } } } }
+  });
+}
+
+function barColors(values){ return values.map(v=> v>=0 ? '#5b8fc7' : '#c97a7a'); }
+function barColorsGreen(values){ return values.map(v=> v>=0 ? '#5e8f3e' : '#c97a7a'); }
+
+function drawHNetCharts(labels, groups){
+  if(hChartHan) hChartHan.destroy();
+  if(hChartSarang) hChartSarang.destroy();
+  const hanVals = groups.map(g=>g.hanNet);
+  const sarVals = groups.map(g=>g.sarNet);
+  hChartHan = new Chart(document.getElementById('h-chart-han'), {
+    type:'bar',
+    data:{ labels, datasets:[{ data: hanVals, backgroundColor: barColors(hanVals), borderRadius:3 }] },
+    options:{ plugins:{legend:{display:false}}, scales:{ y:{ ticks:{ callback:manTick } } } }
+  });
+  hChartSarang = new Chart(document.getElementById('h-chart-sarang'), {
+    type:'bar',
+    data:{ labels, datasets:[{ data: sarVals, backgroundColor: barColorsGreen(sarVals), borderRadius:3 }] },
+    options:{ plugins:{legend:{display:false}}, scales:{ y:{ ticks:{ callback:manTick } } } }
+  });
+}
+
+function renderHDetailTable(){
+  const thead = document.getElementById('h-detail-thead');
+  thead.innerHTML = hDetailCols.map(c=>{
+    let arrow='';
+    if(hSortState.key===c.key) arrow = `<span class="arrow">${hSortState.dir===1?'▲':'▼'}</span>`;
+    return `<th onclick="sortHDetail('${c.key}')">${c.label}${arrow}</th>`;
+  }).join('');
+
+  const tbody = document.getElementById('h-detail-tbody');
+  if(!hDetailRows.length){
+    tbody.innerHTML = `<tr><td colspan="${hDetailCols.length}" class="empty-msg">데이터 없음</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = hDetailRows.map(r=>{
+    return '<tr>' + hDetailCols.map(c=>{
+      const v = r[c.key];
+      if(c.type==='num') return `<td>${v!=null?won(v):'-'}</td>`;
+      if(c.type==='pct'){
+        if(v==null) return `<td style="color:#b4b2a9;">-</td>`;
+        const up = v>=0;
+        const color = up ? '#3b6d11' : '#a32d2d';
+        const arrow = up ? '▲' : '▼';
+        return `<td style="color:${color};font-weight:500;">${arrow} ${Math.abs(v).toFixed(1)}%</td>`;
+      }
+      return `<td>${v!=null?v:'-'}</td>`;
+    }).join('') + '</tr>';
+  }).join('');
+}
+
+function sortHDetail(key){
+  if(hSortState.key===key){ hSortState.dir *= -1; } else { hSortState = {key, dir:1}; }
+  hDetailRows.sort((a,b)=>{
+    const va=a[key], vb=b[key];
+    if(va==null && vb==null) return 0;
+    if(va==null) return 1;
+    if(vb==null) return -1;
+    if(typeof va==='number' && typeof vb==='number') return (va-vb)*hSortState.dir;
+    return String(va).localeCompare(String(vb))*hSortState.dir;
+  });
+  renderHDetailTable();
+}
+
+/* ════════════════════════════════════════════
+   가계데이터 (monthly_house: 자산 A/B/C/D + 수입/예비비)
+   ════════════════════════════════════════════ */
+let kMode = 'monthrange';
+let kRawRows = [];
+let kDetailRows = [];
+let kDetailCols = [];
+let kSortState = { key:null, dir:1 };
+let kChartAsset=null, kChartIncome=null, kChartReserve=null;
+
+function initKSelectors(){
+  const thisYear = new Date().getFullYear();
+  const startYear = 2013;
+  const yf = document.getElementById('k-year-from');
+  const yt = document.getElementById('k-year-to');
+  yf.innerHTML=''; yt.innerHTML='';
+  for(let y=thisYear; y>=startYear; y--){
+    yf.innerHTML += `<option value="${y}">${y}</option>`;
+    yt.innerHTML += `<option value="${y}">${y}</option>`;
+  }
+  yf.value = thisYear; yt.value = thisYear;
+
+  const t = new Date();
+  const ymNow = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}`;
+  const sixAgo = new Date(t); sixAgo.setMonth(sixAgo.getMonth()-5);
+  const ymFrom = `${sixAgo.getFullYear()}-${String(sixAgo.getMonth()+1).padStart(2,'0')}`;
+  document.getElementById('k-month-from').value = ymFrom;
+  document.getElementById('k-month-to').value = ymNow;
+}
+
+function onKPeriodModeChange(){
+  kMode = document.getElementById('k-period-mode').value;
+  document.getElementById('k-ctrl-monthrange').style.display = kMode==='monthrange' ? 'inline-flex' : 'none';
+  document.getElementById('k-ctrl-year').style.display = kMode==='year' ? 'inline-flex' : 'none';
+}
+
+function kNum(r,k){ return r && r[k]!=null ? r[k] : null; }
+function kIncomeTotal(r){
+  if(r.income_total!=null) return r.income_total;
+  return (r.han_revenue||0) + (r.sarang_revenue||0);
+}
+
+async function runKQuery(){
+  loading(true);
+  try{
+    if(kMode==='monthrange'){
+      let fromYM = document.getElementById('k-month-from').value;
+      let toYM = document.getElementById('k-month-to').value;
+      if(!fromYM || !toYM){ setStatus('⚠ 기간을 선택하세요','error'); loading(false); return; }
+      if(fromYM > toYM){ [fromYM, toYM] = [toYM, fromYM]; }
+      kRawRows = await fetchMonthlyHouse(fromYM, toYM);
+    }else{
+      const yf = +document.getElementById('k-year-from').value;
+      const yt = +document.getElementById('k-year-to').value;
+      const lo = Math.min(yf,yt), hi = Math.max(yf,yt);
+      kRawRows = await fetchMonthlyHouse(`${lo}-01`, `${hi}-12`);
+    }
+    renderKAll();
+    setStatus('✓ 연결됨','success');
+  }catch(e){
+    setStatus('⚠ 조회 실패: '+e.message,'error');
+  }finally{
+    loading(false);
+  }
+}
+
+function kRowToFlat(r){
+  return {
+    key: r.year_month,
+    a_cash: kNum(r,'a_cash'), b_longterm: kNum(r,'b_longterm'), c_pension: kNum(r,'c_pension'), d_total: kNum(r,'d_total'),
+    bank_total: kNum(r,'bank_total'), stock_total: kNum(r,'stock_total'), savings_total: kNum(r,'savings_total'), deposit_total: kNum(r,'deposit_total'),
+    yellow_total: kNum(r,'yellow_total'), guarantee_total: kNum(r,'guarantee_total'), retirement_total: kNum(r,'retirement_total'), annuity_total: kNum(r,'annuity_total'),
+    han_revenue: kNum(r,'han_revenue'), sarang_revenue: kNum(r,'sarang_revenue'),
+    han_net: kNum(r,'han_net'), sarang_net: kNum(r,'sarang_net'),
+    income_total: kIncomeTotal(r),
+    mission_total: kNum(r,'mission_total'), reserve_total: kNum(r,'reserve_total'),
+    reserve_h: kNum(r,'reserve_h'), reserve_s: kNum(r,'reserve_s'), jo11: kNum(r,'11jo'),
+    memo: r.memo || '',
+  };
+}
+
+function renderKAll(){
+  if(kMode==='monthrange') renderKMonthRange();
+  else renderKYear();
+}
+
+function setKSummary(latest, incomeSum){
+  document.getElementById('k-m1').textContent = latest ? bigWon(latest.d_total) : '-';
+  document.getElementById('k-m2').textContent = latest ? bigWon(latest.a_cash) : '-';
+  document.getElementById('k-m3').textContent = latest ? bigWon(latest.b_longterm) : '-';
+  document.getElementById('k-m4').textContent = latest ? bigWon(latest.c_pension) : '-';
+  document.getElementById('k-m5').textContent = bigWon(incomeSum);
+}
+
+function renderKMonthRange(){
+  const sorted = kRawRows.slice().sort((a,b)=>a.year_month.localeCompare(b.year_month));
+  const flat = sorted.map(kRowToFlat);
+  const latest = flat.length ? flat[flat.length-1] : null;
+  const incomeSum = flat.reduce((s,g)=>s+(g.income_total||0),0);
+  setKSummary(latest, incomeSum);
+
+  const fromYM = document.getElementById('k-month-from').value, toYM = document.getElementById('k-month-to').value;
+  document.getElementById('k-chart-title-asset').textContent = `${fromYM}~${toYM} 자산 구성 (A/B/C/D) 추이`;
+  document.getElementById('k-chart-title-income').textContent = `${fromYM}~${toYM} 매출·실수입 추이`;
+  document.getElementById('k-chart-title-reserve').textContent = `${fromYM}~${toYM} 예비비 / 선교헌금 추이`;
+  document.getElementById('k-table-title').textContent = '월별 상세 (가계 자산 + 병원 수입)';
+
+  drawKCharts(flat.map(g=>g.key), flat);
+  buildKTable(flat, 'key', '월');
+}
+
+function renderKYear(){
+  const byYear = new Map();
+  kRawRows.forEach(r=>{
+    const y = r.year_month.slice(0,4);
+    if(!byYear.has(y)) byYear.set(y, []);
+    byYear.get(y).push(r);
+  });
+  const years = Array.from(byYear.keys()).sort();
+  const flat = years.map(y=>{
+    const rows = byYear.get(y).slice().sort((a,b)=>a.year_month.localeCompare(b.year_month));
+    const last = rows[rows.length-1];
+    let hanRevSum=0, sarRevSum=0, hanNetSum=0, sarNetSum=0, incomeSum=0, missionSum=0, reserveSum=0;
+    rows.forEach(r=>{
+      hanRevSum += r.han_revenue||0; sarRevSum += r.sarang_revenue||0;
+      hanNetSum += r.han_net||0; sarNetSum += r.sarang_net||0;
+      incomeSum += kIncomeTotal(r);
+      missionSum += r.mission_total||0; reserveSum += r.reserve_total||0;
+    });
+    return {
+      key: y,
+      a_cash: kNum(last,'a_cash'), b_longterm: kNum(last,'b_longterm'), c_pension: kNum(last,'c_pension'), d_total: kNum(last,'d_total'),
+      bank_total: kNum(last,'bank_total'), stock_total: kNum(last,'stock_total'), savings_total: kNum(last,'savings_total'), deposit_total: kNum(last,'deposit_total'),
+      yellow_total: kNum(last,'yellow_total'), guarantee_total: kNum(last,'guarantee_total'), retirement_total: kNum(last,'retirement_total'), annuity_total: kNum(last,'annuity_total'),
+      han_revenue: hanRevSum, sarang_revenue: sarRevSum, han_net: hanNetSum, sarang_net: sarNetSum,
+      income_total: incomeSum, mission_total: missionSum, reserve_total: reserveSum,
+      reserve_h: kNum(last,'reserve_h'), reserve_s: kNum(last,'reserve_s'), jo11: kNum(last,'11jo'),
+      memo: last.memo || '',
+    };
+  });
+  const latest = flat.length ? flat[flat.length-1] : null;
+  const incomeSum = flat.reduce((s,g)=>s+(g.income_total||0),0);
+  setKSummary(latest, incomeSum);
+
+  document.getElementById('k-chart-title-asset').textContent = `연도별 자산 구성 (A/B/C/D) 추이 (연말 기준)`;
+  document.getElementById('k-chart-title-income').textContent = `연도별 매출·실수입 추이 (연합계)`;
+  document.getElementById('k-chart-title-reserve').textContent = `연도별 예비비 / 선교헌금 추이 (연합계·연말)`;
+  document.getElementById('k-table-title').textContent = '연도별 상세 (가계 자산 + 병원 수입)';
+
+  drawKCharts(flat.map(g=>g.key), flat);
+  buildKTable(flat, 'key', '연도');
+}
+
+function buildKTable(flat, keyName, keyLabel){
+  kDetailCols = [
+    {key:'key', label:keyLabel, type:'text'},
+    {key:'a_cash', label:'A.현금', type:'num'},
+    {key:'b_longterm', label:'B.장기현금', type:'num'},
+    {key:'c_pension', label:'C.연금성', type:'num'},
+    {key:'d_total', label:'D.총합', type:'num'},
+    {key:'bank_total', label:'①통장', type:'num'},
+    {key:'stock_total', label:'②주식', type:'num'},
+    {key:'savings_total', label:'③적금', type:'num'},
+    {key:'deposit_total', label:'④정기예금', type:'num'},
+    {key:'yellow_total', label:'⑤노란우산', type:'num'},
+    {key:'guarantee_total', label:'⑥보증금', type:'num'},
+    {key:'retirement_total', label:'⑦퇴직연금', type:'num'},
+    {key:'annuity_total', label:'⑧연금보험', type:'num'},
+    {key:'han_revenue', label:'매출(한강)', type:'num'},
+    {key:'sarang_revenue', label:'매출(사랑)', type:'num'},
+    {key:'han_net', label:'실수입(한강)', type:'num'},
+    {key:'sarang_net', label:'실수입(사랑)', type:'num'},
+    {key:'income_total', label:'수입합', type:'num'},
+    {key:'mission_total', label:'선교헌금합', type:'num'},
+    {key:'reserve_total', label:'예비비합', type:'num'},
+    {key:'reserve_h', label:'한강예비비', type:'num'},
+    {key:'reserve_s', label:'사랑예비비', type:'num'},
+    {key:'jo11', label:'11조', type:'num'},
+    {key:'memo', label:'메모', type:'memo'},
+  ];
+  kDetailRows = flat;
+  kSortState = {key:null, dir:1};
+  renderKDetailTable();
+}
+
+function drawKCharts(labels, flat){
+  if(kChartAsset) kChartAsset.destroy();
+  if(kChartIncome) kChartIncome.destroy();
+  if(kChartReserve) kChartReserve.destroy();
+
+  kChartAsset = new Chart(document.getElementById('k-chart-asset'), {
+    type:'line',
+    data:{ labels, datasets:[
+      { label:'D.총합', data: flat.map(g=>g.d_total), borderColor:'#1f5fa8', backgroundColor:'rgba(31,95,168,0.08)', fill:true, tension:.25, pointRadius:3 },
+      { label:'A.현금', data: flat.map(g=>g.a_cash), borderColor:'#3b6d11', fill:false, tension:.25, pointRadius:2 },
+      { label:'B.장기현금', data: flat.map(g=>g.b_longterm), borderColor:'#c9852f', fill:false, tension:.25, pointRadius:2 },
+      { label:'C.연금성', data: flat.map(g=>g.c_pension), borderColor:'#8855bb', fill:false, tension:.25, pointRadius:2 },
+    ]},
+    options:{ plugins:{legend:{display:true, labels:{boxWidth:12, font:{size:11}}}}, scales:{ y:{ ticks:{ callback:manTick } } } }
+  });
+
+  kChartIncome = new Chart(document.getElementById('k-chart-income'), {
+    type:'bar',
+    data:{ labels, datasets:[
+      { label:'매출(한강)', data: flat.map(g=>g.han_revenue), backgroundColor:'#1f5fa8' },
+      { label:'매출(사랑)', data: flat.map(g=>g.sarang_revenue), backgroundColor:'#3b6d11' },
+      { label:'실수입(한강)', type:'line', data: flat.map(g=>g.han_net), borderColor:'#a32d2d', fill:false, tension:.25, pointRadius:2 },
+      { label:'실수입(사랑)', type:'line', data: flat.map(g=>g.sarang_net), borderColor:'#c9852f', fill:false, tension:.25, pointRadius:2 },
+    ]},
+    options:{ plugins:{legend:{display:true, labels:{boxWidth:12, font:{size:10}}}}, scales:{ y:{ ticks:{ callback:manTick } } } }
+  });
+
+  kChartReserve = new Chart(document.getElementById('k-chart-reserve'), {
+    type:'bar',
+    data:{ labels, datasets:[
+      { label:'한강예비비', data: flat.map(g=>g.reserve_h), backgroundColor:'#5b8fc7' },
+      { label:'사랑예비비', data: flat.map(g=>g.reserve_s), backgroundColor:'#7fae5c' },
+      { label:'선교헌금합', data: flat.map(g=>g.mission_total), backgroundColor:'#c9852f' },
+    ]},
+    options:{ plugins:{legend:{display:true, labels:{boxWidth:12, font:{size:10}}}}, scales:{ y:{ ticks:{ callback:manTick } } } }
+  });
+}
+
+function renderKDetailTable(){
+  const thead = document.getElementById('k-detail-thead');
+  thead.innerHTML = kDetailCols.map(c=>{
+    let arrow='';
+    if(kSortState.key===c.key) arrow = `<span class="arrow">${kSortState.dir===1?'▲':'▼'}</span>`;
+    return `<th onclick="sortKDetail('${c.key}')">${c.label}${arrow}</th>`;
+  }).join('');
+
+  const tbody = document.getElementById('k-detail-tbody');
+  if(!kDetailRows.length){
+    tbody.innerHTML = `<tr><td colspan="${kDetailCols.length}" class="empty-msg">데이터 없음</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = kDetailRows.map(r=>{
+    return '<tr>' + kDetailCols.map(c=>{
+      const v = r[c.key];
+      if(c.type==='num') return `<td>${v!=null?won(v):'-'}</td>`;
+      if(c.type==='memo'){
+        const text = v ? escapeHtml(v) : '';
+        return `<td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${text}">${text||'-'}</td>`;
+      }
+      return `<td>${v!=null?v:'-'}</td>`;
+    }).join('') + '</tr>';
+  }).join('');
+}
+
+function escapeHtml(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function sortKDetail(key){
+  if(kSortState.key===key){ kSortState.dir *= -1; } else { kSortState = {key, dir:1}; }
+  kDetailRows.sort((a,b)=>{
+    const va=a[key], vb=b[key];
+    if(va==null && vb==null) return 0;
+    if(va==null) return 1;
+    if(vb==null) return -1;
+    if(typeof va==='number' && typeof vb==='number') return (va-vb)*kSortState.dir;
+    return String(va).localeCompare(String(vb))*kSortState.dir;
+  });
+  renderKDetailTable();
+}
+
+/* ── 초기화 ── */
+(function init(){
+  initSelectors();
+  onPeriodModeChange();
+  runQuery();
+})();
+</script>
+</body>
+</html>
