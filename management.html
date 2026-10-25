@@ -7556,5 +7556,55 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 </script>
 
+
+
+
+<script id="hg-zoom">
+/* 화면 비율 조절: 현재 보이는 탭 화면만 -50% ~ +200% (비율 유지). 위쪽 메뉴/바로가기는 그대로 */
+(function(){
+  var KEY='hg_pagezoom_v1', OPEN='hg_pagezoom_open';
+  var IDS=['tabAppt','tabPatient','tabDrug','tabSearch','tabClin','tabProxy','tabSelcare','tabSms','tabPhone','tabStats','tabDrugview','tabDrugdetail','tabLinks','tabMemo','tabNotice'];
+  var st=document.createElement('style');
+  st.textContent=IDS.map(function(i){return '#'+i;}).join(',')+'{zoom:var(--hg-pz,1);}'
+   +'#hg-zbox{position:fixed;right:10px;bottom:10px;z-index:900;font-family:"Noto Sans KR",system-ui,sans-serif;}'
+   +'#hg-zbox .zt{width:38px;height:38px;border-radius:50%;border:1px solid #cfd5e6;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18);cursor:pointer;font-size:17px;}'
+   +'#hg-zbox .zp{display:none;align-items:center;gap:6px;background:#fff;border:1px solid #cfd5e6;border-radius:22px;padding:6px 10px;box-shadow:0 2px 10px rgba(0,0,0,.2);font-size:12px;color:#334;}'
+   +'#hg-zbox.open .zp{display:flex;} #hg-zbox.open .zt{display:none;}'
+   +'#hg-zbox .zb{width:26px;height:26px;border-radius:7px;border:1px solid #cfd5e6;background:#f4f6fb;cursor:pointer;font-size:14px;line-height:1;}'
+   +'#hg-zbox .zv{min-width:42px;text-align:center;font-weight:700;color:#3b6ef8;}'
+   +'#hg-zbox input[type=range]{width:110px;}';
+  document.head.appendChild(st);
+  var cur=0; try{ cur=parseInt(localStorage.getItem(KEY)||'0',10)||0; }catch(e){}
+  if(cur<-50||cur>200) cur=0;
+  function apply(v,save){
+    v=Math.max(-50,Math.min(200,Math.round(v/10)*10)); cur=v;
+    document.documentElement.style.setProperty('--hg-pz',String(1+v/100));
+    var l=document.getElementById('hg-zv'); if(l) l.textContent=(v>0?'+':'')+v+'%';
+    var r=document.getElementById('hg-zr'); if(r) r.value=v;
+    if(save){ try{localStorage.setItem(KEY,String(v));}catch(e){} }
+  }
+  apply(cur,false);
+  function build(){
+    if(document.getElementById('hg-zbox')) return;
+    var d=document.createElement('div'); d.id='hg-zbox';
+    d.innerHTML='<button class="zt" title="화면 비율">🔍</button>'
+      +'<div class="zp"><span>화면</span><button class="zb" data-d="-10">−</button>'
+      +'<input id="hg-zr" type="range" min="-50" max="200" step="10" value="'+cur+'">'
+      +'<button class="zb" data-d="10">＋</button><span class="zv" id="hg-zv"></span>'
+      +'<button class="zb" data-d="0" title="원래대로">↺</button><button class="zb" data-d="x" title="접기">✕</button></div>';
+    document.body.appendChild(d);
+    try{ if(localStorage.getItem(OPEN)==='1') d.classList.add('open'); }catch(e){}
+    d.querySelector('.zt').onclick=function(){ d.classList.add('open'); try{localStorage.setItem(OPEN,'1');}catch(e){} };
+    d.querySelectorAll('.zb').forEach(function(b){ b.onclick=function(){
+      var k=b.getAttribute('data-d');
+      if(k==='x'){ d.classList.remove('open'); try{localStorage.setItem(OPEN,'0');}catch(e){} return; }
+      apply(k==='0'?0:cur+parseInt(k,10),true);
+    };});
+    d.querySelector('#hg-zr').oninput=function(){ apply(parseInt(this.value,10),true); };
+    apply(cur,false);
+  }
+  if(document.body) build(); else document.addEventListener('DOMContentLoaded',build);
+})();
+</script>
 </body>
 </html>
