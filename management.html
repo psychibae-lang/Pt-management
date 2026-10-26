@@ -6951,12 +6951,17 @@ window.bpClearNotice = async function(){
 };
 
 // ── 관리자 ──
+// 로그인(Supabase Auth)으로 접근이 관리되므로 관리자 비밀번호 없이 바로 진입
 window.bpOpenAdmin = function(){
-  if(bpIsAdmin){bpOpenModal('bpAdminModal');return;}
-  document.getElementById('bpAdminPw').value='';
-  document.getElementById('bpPwError').style.display='none';
-  bpOpenModal('bpLoginModal');
-  setTimeout(function(){document.getElementById('bpAdminPw').focus();},100);
+  if(!bpIsAdmin){
+    bpIsAdmin=true;
+    document.getElementById('bpAdminBtn').textContent='⚙ 관리자 ✓';
+    document.getElementById('bpAdminBtn').style.color='#2d5016';
+    document.getElementById('bpBtnAddNum').style.display='';
+    document.getElementById('bpBtnAddToggle').style.display='';
+    bpRenderNumRows(); bpRenderToggleRows();
+  }
+  bpOpenModal('bpAdminModal');
 };
 window.bpCheckPw = function(){
   if(document.getElementById('bpAdminPw').value===BP_ADMIN_PW){
