@@ -219,6 +219,10 @@ button.add-btn:hover { background: #e6f1fb; }
 /* 누적 열 (구글시트 한강기초자료와 동일) */
 #gen-recent-table th, #gen-recent-table td { white-space: nowrap; }
 #gen-recent-table thead th { vertical-align: bottom; }
+#gen-recent-table th.grp2 { text-align: center; background: #f6f5f0; border-bottom: 0.5px solid #ddddd5; border-left: 1px solid #ddddd5; }
+#gen-recent-table .gl { border-left: 1px solid #ddddd5; }
+#gen-recent-table th small { display: block; font-size: 10px; font-weight: 400; color: #b4b2a9; }
+.range-row button.view-on { background: #185fa5; color: #fff; border-color: #185fa5; }
 #gen-recent-table th.grp { text-align: center; color: #185fa5; background: #eef4fb; border-bottom: 0.5px solid #c9dcf0; }
 #gen-recent-table th.cum, #gen-recent-table td.cum { background: #f6f9fd; }
 #gen-recent-table td.cum-first, #gen-recent-table th.cum-first { border-left: 1px solid #c9dcf0; }
@@ -400,6 +404,8 @@ tr:hover td { background: #f5f5f0; }
           <input type="date" id="g-range-from" title="시작일"><span style="color:#888780;">~</span><input type="date" id="g-range-to" title="종료일">
           <button type="button" onclick="loadGenRange()">기간 조회</button>
           <button type="button" class="secondary" onclick="clearGenRange()">최근 20일</button>
+          <button type="button" class="secondary" id="g-btn-monthly" onclick="loadGenAgg('monthly')">월간조회</button>
+          <button type="button" class="secondary" id="g-btn-yearly" onclick="loadGenAgg('yearly')">년간조회</button>
           <span id="g-range-info" class="range-info"></span>
         </div>
         <div style="overflow-x:auto;">
@@ -901,7 +907,7 @@ const CUM_GROUPS=[
 ];
 function renderGenRecentHead(){
   const th=document.getElementById('gen-recent-thead');
-  if(!th) return;
+  if(!th||_genView!=='daily') return;
   const top=genTableCols().map(k=>`<th rowspan="2"${DAILY_COLS[k].num?' class="num"':''}>${DAILY_COLS[k].th}</th>`).join('')
     +CUM_GROUPS.map(g=>`<th colspan="3" class="grp cum-first">${g.th}</th>`).join('')+'<th rowspan="2"></th>';
   const sub=CUM_GROUPS.map(()=>'<th class="num cum cum-first">올해</th><th class="num cum">작년</th><th class="num cum">증감(%)</th>').join('');
@@ -926,10 +932,10 @@ function computeCumulative(rows,hist){
     });
   });
 }
-async function fetchDailyHistory(from,to){
+async function fetchDailyHistory(from,to,cols='date,daily_revenue,total_patients,new_patients'){
   const out=[]; const page=1000;
   for(let off=0;;off+=page){
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/daily_han?select=date,daily_revenue,total_patients,new_patients&date=gte.${from}&date=lte.${to}&order=date.asc&limit=${page}&offset=${off}`,{headers:HDR});
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/daily_han?select=${cols}&date=gte.${from}&date=lte.${to}&order=date.asc&limit=${page}&offset=${off}`,{headers:HDR});
     const d=await res.json();
     if(!res.ok) throw new Error(d.message||`HTTP ${res.status}`);
     out.push(...d);
@@ -947,6 +953,7 @@ function cumCells(r){
   }).join('');
 }
 function renderGenRecentRows(data){
+  if(_genView!=='daily') return;
   const tbody=document.getElementById('gen-recent-tbody');
   const cols=genTableCols();
   if(!data.length){ tbody.innerHTML=`<tr><td colspan="${cols.length+CUM_GROUPS.length*3+1}" style="text-align:center;color:#888780;padding:20px;">데이터 없음</td></tr>`; return; }
@@ -954,18 +961,126 @@ function renderGenRecentRows(data){
     +cumCells(r)+`<td><button class="danger" style="padding:3px 10px;font-size:12px;" onclick="deleteHangangDaily('${r.date}')">삭제</button></td></tr>`).join('');
 }
 /* 기간 조회: 시작일~종료일이 지정돼 있으면 그 기간 전체, 아니면 최근 20일 */
+let _genView='daily'; // daily | monthly | yearly
+function setGenView(v){
+  _genView=v;
+  document.getElementById('g-btn-monthly')?.classList.toggle('view-on',v==='monthly');
+  document.getElementById('g-btn-yearly')?.classList.toggle('view-on',v==='yearly');
+}
 function loadGenRange(){
   const f=document.getElementById('g-range-from').value, t=document.getElementById('g-range-to').value;
   if(!f&&!t){ showMsg('g-range-info','시작일 또는 종료일을 입력하세요.',false); return; }
   if(f&&t&&f>t){ showMsg('g-range-info','시작일이 종료일보다 늦습니다.',false); return; }
-  loadGenRecent();
+  setGenView('daily'); loadGenRecent();
 }
 function clearGenRange(){
   document.getElementById('g-range-from').value='';
   document.getElementById('g-range-to').value='';
-  loadGenRecent();
+  setGenView('daily'); loadGenRecent();
 }
-async function loadGenRecent(){
+/* 저장·삭제 후 새로고침할 때는 지금 보고 있는 화면(일별/월간/년간)을 유지 */
+function loadGenRecent(){ return _genView==='daily'?loadGenDaily():loadGenAgg(_genView); }
+
+/* ══ 월간조회 / 년간조회 — 구글시트 한강월간·한강년간과 같은 집계 ══
+   환자일평 = 월 환자수/25 (년간은 /300), 평균환자 = 환자수/실진료일수,
+   진료일수 = 환자가 있었던 날 수, 증감은 전년 같은 월(년간은 전년) 대비 */
+function aggPct(cur,prev){ return (cur!=null&&prev)?(cur/prev-1)*100:null; }
+function pctTd(p,cls=''){
+  const c=p==null?'':(p>0.05?' pct-up':(p<-0.05?' pct-down':''));
+  return `<td class="num${cls}${c}">${p==null?'-':p.toFixed(1)+'%'}</td>`;
+}
+const n1=v=>v==null?'-':(Math.round(v*10)/10).toFixed(1);
+function aggregateDaily(hist,keyFn){
+  const m={};
+  hist.forEach(h=>{
+    const k=keyFn(h.date);
+    const a=m[k]||(m[k]={pt:0,newp:0,cash:0,card:0,claim:0,dep:0,rev:0,days:0});
+    const pt=Number(h.total_patients)||0;
+    a.pt+=pt; a.newp+=Number(h.new_patients)||0;
+    a.cash+=Number(h.cash)||0; a.card+=Number(h.card)||0; a.claim+=Number(h.insurance_claim)||0; a.dep+=Number(h.deposit)||0;
+    a.rev+=h.daily_revenue!=null?Number(h.daily_revenue):((Number(h.cash)||0)+(Number(h.card)||0)+(Number(h.insurance_claim)||0));
+    if(pt>0) a.days+=1;
+  });
+  return m;
+}
+async function loadGenAgg(view){
+  setGenView(view);
+  _genRecentRows=null;
+  const f=document.getElementById('g-range-from')?.value||'', t=document.getElementById('g-range-to')?.value||'';
+  const sub=document.getElementById('gen-recent-sub');
+  const rangeTxt=(f||t)?`${f||'처음'} ~ ${t||'오늘'} · `:'';
+  if(sub) sub.textContent=`(${view==='monthly'?'월간':'년간'} · ${rangeTxt}daily_han)`;
+  const tbody=document.getElementById('gen-recent-tbody');
+  tbody.innerHTML='<tr><td style="color:#888780;padding:20px;">불러오는 중…</td></tr>';
+  loading(true);
+  try{
+    const today=new Date(); const to=`${today.getFullYear()+1}-12-31`;
+    const hist=await fetchDailyHistory('1900-01-01',to,'date,total_patients,new_patients,cash,card,insurance_claim,deposit,daily_revenue');
+    if(_genView!==view) return;
+    if(view==='monthly') renderMonthlyTable(hist,f,t); else renderYearlyTable(hist,f,t);
+    setStatus('✓ 연결됨','success');
+  }catch(e){ showMsg('g-range-info','⚠ '+e.message,false); }
+  finally{ loading(false); }
+}
+function renderMonthlyTable(hist,f,t){
+  const M=aggregateDaily(hist,d=>d.slice(0,7));
+  let keys=Object.keys(M).sort();
+  if(f) keys=keys.filter(k=>k>=f.slice(0,7));
+  if(t) keys=keys.filter(k=>k<=t.slice(0,7));
+  const prevKey=k=>`${+k.slice(0,4)-1}${k.slice(4)}`;
+  const cumRev=k=>{ const y=k.slice(0,4); if(!Object.keys(M).some(x=>x.startsWith(y))) return null;
+    let s=0; for(const x in M) if(x.startsWith(y)&&x<=k) s+=M[x].rev; return s; };
+  const grp=(t,sub,n=3)=>`<th colspan="${n}" class="grp2">${t}${sub?` <small style="display:inline">${sub}</small>`:''}</th>`;
+  const tri='<th class="num gl">올해</th><th class="num">전년</th><th class="num">증감(%)</th>';
+  document.getElementById('gen-recent-thead').innerHTML=`<tr>
+    <th rowspan="2">월</th>${grp('방문환자수')}${grp('초진환자')}${grp('수납','(월간)',4)}${grp('월간매출','(현금+카드+청구)')}${grp('누적매출','(연간)')}
+    ${grp('환자일평','(25일)')}${grp('초진일평','(25일)')}${grp('평균환자','(실진료일)')}${grp('평균초진','(실진료일)')}<th rowspan="2" class="num gl">진료일수<small>(환자있던 날)</small></th></tr>
+    <tr>${tri}${tri}<th class="num gl">현금</th><th class="num">카드</th><th class="num">청구</th><th class="num">입금액</th>${tri}${tri}${tri}${tri}${tri}${tri}</tr>`;
+  const tbody=document.getElementById('gen-recent-tbody');
+  if(!keys.length){ tbody.innerHTML='<tr><td colspan="30" style="text-align:center;color:#888780;padding:20px;">데이터 없음</td></tr>'; showMsg('g-range-info','',true); return; }
+  const triTd=(c,p,fmtFn)=>`<td class="num gl">${fmtFn(c)}</td><td class="num">${p==null?'-':fmtFn(p)}</td>${pctTd(aggPct(c,p))}`;
+  tbody.innerHTML=keys.map(k=>{
+    const a=M[k], b=M[prevKey(k)]||null;
+    const avg=(x,d)=>d?x/d:null;
+    return `<tr><td>${k}</td>
+      ${triTd(a.pt,b&&b.pt,nCell)}${triTd(a.newp,b&&b.newp,nCell)}
+      <td class="num gl">${nCell(a.cash)}</td><td class="num">${nCell(a.card)}</td><td class="num">${nCell(a.claim)}</td><td class="num">${nCell(a.dep)}</td>
+      ${triTd(a.rev,b&&b.rev,nCell)}${triTd(cumRev(k),cumRev(prevKey(k)),nCell)}
+      ${triTd(a.pt/25,b&&b.pt/25,n1)}${triTd(a.newp/25,b&&b.newp/25,n1)}
+      ${triTd(avg(a.pt,a.days),b&&avg(b.pt,b.days),n1)}${triTd(avg(a.newp,a.days),b&&avg(b.newp,b.days),n1)}
+      <td class="num gl">${a.days}</td></tr>`;
+  }).join('');
+  const info=document.getElementById('g-range-info'); if(info){ info.className='range-info'; info.textContent=`${keys.length}개월`; }
+}
+function renderYearlyTable(hist,f,t){
+  const Y=aggregateDaily(hist,d=>d.slice(0,4));
+  let keys=Object.keys(Y).sort();
+  if(f) keys=keys.filter(k=>k>=f.slice(0,4));
+  if(t) keys=keys.filter(k=>k<=t.slice(0,4));
+  const grp=(t,sub,n=2)=>`<th colspan="${n}" class="grp2">${t}${sub?` <small style="display:inline">${sub}</small>`:''}</th>`;
+  const duo='<th class="num gl">값</th><th class="num">증감(%)</th>';
+  document.getElementById('gen-recent-thead').innerHTML=`<tr>
+    <th rowspan="2">년</th>${grp('방문환자수')}${grp('초진환자')}${grp('수납','(연간)',4)}${grp('매출(1년)','(현금+카드+청구)')}
+    ${grp('환자일평','(300일)')}${grp('초진일평','(300일)')}${grp('환자평균','(실진료일)')}${grp('초진평균','(실진료일)')}<th rowspan="2" class="num gl">진료일수<small>(환자있던 날)</small></th></tr>
+    <tr>${duo}${duo}<th class="num gl">현금</th><th class="num">카드</th><th class="num">청구</th><th class="num">입금액</th>${duo}${duo}${duo}${duo}${duo}</tr>`;
+  const tbody=document.getElementById('gen-recent-tbody');
+  if(!keys.length){ tbody.innerHTML='<tr><td colspan="20" style="text-align:center;color:#888780;padding:20px;">데이터 없음</td></tr>'; return; }
+  const duoTd=(c,p,fmtFn)=>`<td class="num gl">${fmtFn(c)}</td>${pctTd(aggPct(c,p))}`;
+  tbody.innerHTML=keys.map(k=>{
+    const a=Y[k], b=Y[String(+k-1)]||null;
+    const avg=(x,d)=>d?x/d:null;
+    return `<tr><td>${k}</td>
+      ${duoTd(a.pt,b&&b.pt,nCell)}${duoTd(a.newp,b&&b.newp,nCell)}
+      <td class="num gl">${nCell(a.cash)}</td><td class="num">${nCell(a.card)}</td><td class="num">${nCell(a.claim)}</td><td class="num">${nCell(a.dep)}</td>
+      ${duoTd(a.rev,b&&b.rev,nCell)}
+      ${duoTd(a.pt/300,b&&b.pt/300,n1)}${duoTd(a.newp/300,b&&b.newp/300,n1)}
+      ${duoTd(avg(a.pt,a.days),b&&avg(b.pt,b.days),n1)}${duoTd(avg(a.newp,a.days),b&&avg(b.newp,b.days),n1)}
+      <td class="num gl">${a.days}</td></tr>`;
+  }).join('');
+  const info=document.getElementById('g-range-info'); if(info){ info.className='range-info'; info.textContent=`${keys.length}년`; }
+}
+
+async function loadGenDaily(){
   const f=document.getElementById('g-range-from')?.value||'', t=document.getElementById('g-range-to')?.value||'';
   const ranged=!!(f||t);
   // 기간 조회는 오래된 날짜부터, 최근 20일은 최신 20건을 가져와 뒤집어서 과거가 위에 오게 한다
