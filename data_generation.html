@@ -198,6 +198,24 @@ button.add-btn:hover { background: #e6f1fb; }
 .form-field label { display: block; font-size: 12px; color: #888780; margin-bottom: 5px; }
 .form-actions { display: flex; gap: 10px; margin-top: 18px; align-items: center; flex-wrap: wrap; }
 .form-msg { font-size: 13px; }
+/* 한강일일 입력: 2줄 배치 + 드래그로 순서 변경 */
+.daily-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 900px) { .daily-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .daily-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.daily-grid .form-field { min-width: 0; border-radius: 8px; transition: background .1s; }
+.daily-grid .form-field label { display: flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.daily-grid .form-field label .lbl { overflow: hidden; text-overflow: ellipsis; }
+.daily-grid input { padding: 7px 9px; }
+.drag-handle { cursor: grab; color: #b4b2a9; font-size: 12px; user-select: none; flex-shrink: 0; padding: 0 2px; }
+.drag-handle:hover { color: #185fa5; }
+.daily-grid .form-field.dragging { opacity: .4; }
+.daily-grid .form-field.drop-target { background: #e6f1fb; outline: 1px dashed #85b7eb; outline-offset: 2px; }
+.order-hint { font-size: 12px; font-weight: 400; color: #888780; margin-left: 8px; }
+.order-hint button { font-size: 11px; padding: 2px 8px; margin-left: 6px; }
+.range-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.range-row input[type=date] { width: 150px; }
+.range-row button { padding: 6px 14px; font-size: 13px; }
+.range-row .range-info { font-size: 12px; color: #888780; }
 .form-msg.ok { color: #3b6d11; }
 .form-msg.err { color: #a32d2d; }
 
@@ -332,27 +350,27 @@ tr:hover td { background: #f5f5f0; }
   <div id="gensub-hangang-daily" class="gensubpage active">
     <div class="main">
       <div class="form-card">
-        <h2>일별 데이터 입력</h2>
-        <div class="form-grid">
-          <div class="form-field"><label>날짜 *</label><input type="date" id="g-date"></div>
-          <div class="form-field"><label>요일</label><input type="text" id="g-dow" readonly style="background:#f5f5f0;color:#888780;"></div>
-          <div class="form-field"><label>총 환자수</label><input type="number" id="g-total" min="0" placeholder="0"></div>
-          <div class="form-field"><label>초진</label><input type="number" id="g-new" min="0" placeholder="0"></div>
-          <div class="form-field"><label>재진</label><input type="number" id="g-return" min="0" placeholder="0"></div>
-          <div class="form-field"><label>일매출 (원) <span style="color:#888780;font-weight:400;">- 자동계산</span></label><input type="number" id="g-revenue" min="0" placeholder="0" readonly style="background:#f5f5f0;color:#888780;"></div>
-          <div class="form-field"><label>현금 (원)</label><input type="number" id="g-cash" min="0" placeholder="0" oninput="recalcRevenue();recalcLeftmoney()"></div>
-          <div class="form-field"><label>카드 (원)</label><input type="number" id="g-card" min="0" placeholder="0" oninput="recalcRevenue()"></div>
-          <div class="form-field"><label>청구액 (원)</label><input type="number" id="g-claim" min="0" placeholder="0" oninput="recalcRevenue()"></div>
-          <div class="form-field"><label>입금액 (원)</label><input type="number" id="g-deposit" min="0" placeholder="0" oninput="recalcLeftmoney()"></div>
-          <div class="form-field"><label>전날 보관현금 (원) <span id="g-prev-leftmoney-date" style="color:#888780;font-weight:400;"></span></label><input type="number" id="g-prev-leftmoney" min="0" placeholder="0" readonly style="background:#f5f5f0;color:#888780;"></div>
-          <div class="form-field">
-            <label>보관현금 (원) <span id="g-leftmoney-tag" style="color:#888780;font-weight:400;">- 자동계산</span></label>
-            <div style="display:flex;gap:6px;">
-              <input type="number" id="g-leftmoney" min="0" placeholder="0" oninput="markLeftmoneyManual()" style="flex:1;">
-              <button type="button" class="secondary" style="padding:0 10px;font-size:12px;white-space:nowrap;" onclick="recalcLeftmoney(true)" title="자동계산 값으로 되돌리기">↺ 재계산</button>
+        <h2>일별 데이터 입력<span class="order-hint">⠿ 를 끌어서 항목 순서 변경 (최근 입력 데이터 표에도 적용)<button type="button" class="secondary" onclick="resetDailyFieldOrder()">순서 초기화</button></span></h2>
+        <div class="form-grid daily-grid" id="g-field-grid">
+          <div class="form-field" data-key="date"><label title="날짜"><span class="drag-handle" title="끌어서 순서 변경">⠿</span><span class="lbl">날짜 *</span></label><input type="date" id="g-date"></div>
+          <div class="form-field" data-key="dow"><label title="요일"><span class="drag-handle" title="끌어서 순서 변경">⠿</span><span class="lbl">요일</span></label><input type="text" id="g-dow" readonly style="background:#f5f5f0;color:#888780;"></div>
+          <div class="form-field" data-key="total"><label title="총 환자수"><span class="drag-handle" title="끌어서 순서 변경">⠿</span><span class="lbl">총 환자수</span></label><input type="number" id="g-total" min="0" placeholder="0"></div>
+          <div class="form-field" data-key="new"><label title="초진"><span class="drag-handle" title="끌어서 순서 변경">⠿</span><span class="lbl">초진</span></label><input type="number" id="g-new" min="0" placeholder="0"></div>
+          <div class="form-field" data-key="return"><label title="재진"><span class="drag-handle" title="끌어서 순서 변경">⠿</span><span class="lbl">재진</span></label><input type="number" id="g-return" min="0" placeholder="0"></div>
+          <div class="form-field" data-key="revenue"><label title="일매출 (원) - 자동계산"><span class="drag-handle" title="끌어서 순서 변경">⠿</span><span class="lbl">일매출 <span style="color:#888780;font-weight:400;">(자동)</span></span></label><input type="number" id="g-revenue" min="0" placeholder="0" readonly style="background:#f5f5f0;color:#888780;"></div>
+          <div class="form-field" data-key="cash"><label title="현금 (원)"><span class="drag-handle" title="끌어서 순서 변경">⠿</span><span class="lbl">현금</span></label><input type="number" id="g-cash" min="0" placeholder="0" oninput="recalcRevenue();recalcLeftmoney()"></div>
+          <div class="form-field" data-key="card"><label title="카드 (원)"><span class="drag-handle" title="끌어서 순서 변경">⠿</span><span class="lbl">카드</span></label><input type="number" id="g-card" min="0" placeholder="0" oninput="recalcRevenue()"></div>
+          <div class="form-field" data-key="claim"><label title="청구액 (원)"><span class="drag-handle" title="끌어서 순서 변경">⠿</span><span class="lbl">청구액</span></label><input type="number" id="g-claim" min="0" placeholder="0" oninput="recalcRevenue()"></div>
+          <div class="form-field" data-key="deposit"><label title="입금액 (원)"><span class="drag-handle" title="끌어서 순서 변경">⠿</span><span class="lbl">입금액</span></label><input type="number" id="g-deposit" min="0" placeholder="0" oninput="recalcLeftmoney()"></div>
+          <div class="form-field" data-key="prevleft"><label id="g-prev-leftmoney-label" title="전날 보관현금 (원)"><span class="drag-handle" title="끌어서 순서 변경">⠿</span><span class="lbl">전날 보관현금 <span id="g-prev-leftmoney-date" style="color:#888780;font-weight:400;"></span></span></label><input type="number" id="g-prev-leftmoney" min="0" placeholder="0" readonly style="background:#f5f5f0;color:#888780;"></div>
+          <div class="form-field" data-key="leftmoney">
+            <label title="보관현금 (원) — 자동계산: 전날 보관현금 + 현금 − 입금액"><span class="drag-handle" title="끌어서 순서 변경">⠿</span><span class="lbl">보관현금 <span id="g-leftmoney-tag" style="color:#888780;font-weight:400;">(자동)</span></span></label>
+            <div style="display:flex;gap:4px;">
+              <input type="number" id="g-leftmoney" min="0" placeholder="0" oninput="markLeftmoneyManual()" style="flex:1;min-width:0;">
+              <button type="button" class="secondary" style="padding:0 8px;font-size:13px;flex-shrink:0;" onclick="recalcLeftmoney(true)" title="자동계산 값으로 되돌리기">↺</button>
             </div>
           </div>
-          <div class="form-field"><label>예상 내원환자수 <span style="color:#888780;font-weight:400;">- 자동계산(90일)</span></label><input type="number" id="g-expected-pt" min="0" placeholder="0" readonly style="background:#f5f5f0;color:#888780;"></div>
+          <div class="form-field" data-key="expected"><label title="예상 내원환자수 - 자동계산(90일)"><span class="drag-handle" title="끌어서 순서 변경">⠿</span><span class="lbl">예상 내원환자 <span style="color:#888780;font-weight:400;">(90일)</span></span></label><input type="number" id="g-expected-pt" min="0" placeholder="0" readonly style="background:#f5f5f0;color:#888780;"></div>
         </div>
         <div class="form-actions">
           <button onclick="saveHangangDaily()">저장</button>
@@ -369,13 +387,16 @@ tr:hover td { background: #f5f5f0; }
         </div>
       </div>
       <div class="recent-card">
-        <h2>최근 입력 데이터 <span style="font-size:12px;font-weight:400;color:#888780;">(최근 20일 · daily_han)</span></h2>
+        <h2>최근 입력 데이터 <span id="gen-recent-sub" style="font-size:12px;font-weight:400;color:#888780;">(최근 20일 · daily_han)</span></h2>
+        <div class="range-row">
+          <input type="date" id="g-range-from" title="시작일"><span style="color:#888780;">~</span><input type="date" id="g-range-to" title="종료일">
+          <button type="button" onclick="loadGenRange()">기간 조회</button>
+          <button type="button" class="secondary" onclick="clearGenRange()">최근 20일</button>
+          <span id="g-range-info" class="range-info"></span>
+        </div>
         <div style="overflow-x:auto;">
           <table>
-            <thead><tr>
-              <th>날짜</th><th>요일</th><th class="num">환자</th><th class="num">초진</th><th class="num">재진</th>
-              <th class="num">매출</th><th class="num">현금</th><th class="num">카드</th><th class="num">청구액</th><th class="num">입금액</th><th class="num">보관현금</th><th class="num">예상환자</th><th></th>
-            </tr></thead>
+            <thead><tr id="gen-recent-thead"></tr></thead>
             <tbody id="gen-recent-tbody"></tbody>
           </table>
         </div>
@@ -686,10 +707,10 @@ async function loadPrevLeftmoney(dateVal){
     const data=await res.json();
     if(Array.isArray(data) && data.length && data[0].leftmoney!=null){
       prevEl.value=data[0].leftmoney;
-      prevDateEl.textContent=`(${data[0].date} 기준)`;
+      prevDateEl.textContent=`(${data[0].date.slice(5)})`; document.getElementById('g-prev-leftmoney-label').title=`전날 보관현금 (원) — ${data[0].date} 기준`;
     }else{
       prevEl.value='';
-      prevDateEl.textContent='(이전 기록 없음)';
+      prevDateEl.textContent='(기록 없음)';
     }
   }catch(e){
     prevEl.value=''; prevDateEl.textContent='';
@@ -702,13 +723,13 @@ async function loadPrevLeftmoney(dateVal){
 function markLeftmoneyManual(){
   _leftmoneyManual=true;
   const tag=document.getElementById('g-leftmoney-tag');
-  if(tag) tag.textContent='- 실사금액(수동입력)';
+  if(tag) tag.textContent='(실사·수동)';
 }
 function recalcLeftmoney(force){
   if(_leftmoneyManual && !force) return;
   _leftmoneyManual=false;
   const tag=document.getElementById('g-leftmoney-tag');
-  if(tag) tag.textContent='- 자동계산';
+  if(tag) tag.textContent='(자동)';
   const prev = +(document.getElementById('g-prev-leftmoney').value || 0);
   const cash = +(document.getElementById('g-cash').value || 0);
   const deposit = +(document.getElementById('g-deposit').value || 0);
@@ -776,26 +797,139 @@ async function saveHangangDaily(){
   }catch(e){showMsg('gen-form-msg','오류: '+e.message,false);}
   finally{loading(false);}
 }
+/* 입력 항목 ↔ 최근 입력 데이터 표 열 정의. 입력 칸 순서를 바꾸면 표 열도 같은 순서로 나온다.
+   (전날 보관현금은 DB 컬럼이 아니라서 표에는 없음) */
+const DAILY_FIELD_ORDER_KEY='hg_daily_han_field_order';
+const DAILY_DEFAULT_ORDER=['date','dow','total','new','return','revenue','cash','card','claim','deposit','prevleft','leftmoney','expected'];
+const nCell=v=>v!=null?Number(v).toLocaleString():'-';
+const DAILY_COLS={
+  date:{th:'날짜',td:r=>r.date||''},
+  dow:{th:'요일',td:r=>r.day_of_week==='일'?'<span class="badge badge-sun">일</span>':(r.day_of_week||'')},
+  total:{th:'환자',num:true,td:r=>r.total_patients??'-'},
+  new:{th:'초진',num:true,td:r=>r.new_patients??'-'},
+  return:{th:'재진',num:true,td:r=>r.return_patients??'-'},
+  revenue:{th:'매출',num:true,td:r=>nCell(r.daily_revenue)},
+  cash:{th:'현금',num:true,td:r=>nCell(r.cash)},
+  card:{th:'카드',num:true,td:r=>nCell(r.card)},
+  claim:{th:'청구액',num:true,td:r=>nCell(r.insurance_claim)},
+  deposit:{th:'입금액',num:true,td:r=>nCell(r.deposit)},
+  leftmoney:{th:'보관현금',num:true,td:r=>nCell(r.leftmoney)},
+  expected:{th:'예상환자',num:true,td:r=>nCell(r.expected_pt)}
+};
+function getDailyFieldOrder(){
+  let saved=[];
+  try{ saved=JSON.parse(localStorage.getItem(DAILY_FIELD_ORDER_KEY)||'[]'); }catch(e){}
+  if(!Array.isArray(saved)) saved=[];
+  const order=saved.filter(k=>DAILY_DEFAULT_ORDER.includes(k));
+  DAILY_DEFAULT_ORDER.forEach(k=>{ if(!order.includes(k)) order.push(k); }); // 새로 생긴 항목은 뒤에 붙임
+  return order;
+}
+function applyDailyFieldOrder(order){
+  const grid=document.getElementById('g-field-grid');
+  order.forEach(k=>{ const el=grid.querySelector(`.form-field[data-key="${k}"]`); if(el) grid.appendChild(el); });
+  renderGenRecentHead();
+  if(_genRecentRows) renderGenRecentRows(_genRecentRows);
+}
+function saveDailyFieldOrder(){
+  const order=[...document.querySelectorAll('#g-field-grid .form-field')].map(el=>el.dataset.key);
+  try{ localStorage.setItem(DAILY_FIELD_ORDER_KEY,JSON.stringify(order)); }catch(e){}
+  renderGenRecentHead();
+  if(_genRecentRows) renderGenRecentRows(_genRecentRows);
+}
+function resetDailyFieldOrder(){
+  try{ localStorage.removeItem(DAILY_FIELD_ORDER_KEY); }catch(e){}
+  applyDailyFieldOrder(DAILY_DEFAULT_ORDER);
+}
+/* ⠿ 손잡이를 잡았을 때만 칸이 끌리도록(입력창 텍스트 선택은 그대로) */
+(function initDailyFieldDrag(){
+  const grid=document.getElementById('g-field-grid');
+  if(!grid) return;
+  let dragEl=null;
+  grid.querySelectorAll('.drag-handle').forEach(h=>{
+    h.addEventListener('mousedown',()=>{ h.closest('.form-field').draggable=true; });
+    h.addEventListener('click',e=>e.preventDefault()); // 라벨 클릭으로 입력창 포커스 이동 방지
+  });
+  document.addEventListener('mouseup',()=>{ if(!dragEl) grid.querySelectorAll('.form-field').forEach(f=>f.draggable=false); });
+  grid.addEventListener('dragstart',e=>{
+    const f=e.target.closest&&e.target.closest('.form-field');
+    if(!f||!f.draggable){ e.preventDefault(); return; }
+    dragEl=f; f.classList.add('dragging');
+    e.dataTransfer.effectAllowed='move';
+    try{ e.dataTransfer.setData('text/plain',f.dataset.key); }catch(_){}
+  });
+  grid.addEventListener('dragover',e=>{
+    if(!dragEl) return;
+    e.preventDefault();
+    const t=e.target.closest('.form-field');
+    grid.querySelectorAll('.drop-target').forEach(x=>{ if(x!==t) x.classList.remove('drop-target'); });
+    if(!t||t===dragEl) return;
+    t.classList.add('drop-target');
+  });
+  grid.addEventListener('drop',e=>{
+    if(!dragEl) return;
+    e.preventDefault();
+    const t=e.target.closest('.form-field');
+    if(t&&t!==dragEl){
+      const items=[...grid.children];
+      // 뒤쪽으로 옮기면 대상 뒤에, 앞쪽으로 옮기면 대상 앞에 놓는다
+      if(items.indexOf(dragEl)<items.indexOf(t)) t.after(dragEl); else t.before(dragEl);
+      saveDailyFieldOrder();
+    }
+  });
+  grid.addEventListener('dragend',()=>{
+    if(dragEl){ dragEl.classList.remove('dragging'); dragEl.draggable=false; }
+    grid.querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'));
+    dragEl=null;
+  });
+})();
+
+let _genRecentRows=null;
+function genTableCols(){ return getDailyFieldOrder().filter(k=>DAILY_COLS[k]); }
+function renderGenRecentHead(){
+  const tr=document.getElementById('gen-recent-thead');
+  if(tr) tr.innerHTML=genTableCols().map(k=>`<th${DAILY_COLS[k].num?' class="num"':''}>${DAILY_COLS[k].th}</th>`).join('')+'<th></th>';
+}
+function renderGenRecentRows(data){
+  const tbody=document.getElementById('gen-recent-tbody');
+  const cols=genTableCols();
+  if(!data.length){ tbody.innerHTML=`<tr><td colspan="${cols.length+1}" style="text-align:center;color:#888780;padding:20px;">데이터 없음</td></tr>`; return; }
+  tbody.innerHTML=data.map(r=>'<tr>'+cols.map(k=>`<td${DAILY_COLS[k].num?' class="num"':''}>${DAILY_COLS[k].td(r)}</td>`).join('')
+    +`<td><button class="danger" style="padding:3px 10px;font-size:12px;" onclick="deleteHangangDaily('${r.date}')">삭제</button></td></tr>`).join('');
+}
+/* 기간 조회: 시작일~종료일이 지정돼 있으면 그 기간 전체, 아니면 최근 20일 */
+function loadGenRange(){
+  const f=document.getElementById('g-range-from').value, t=document.getElementById('g-range-to').value;
+  if(!f&&!t){ showMsg('g-range-info','시작일 또는 종료일을 입력하세요.',false); return; }
+  if(f&&t&&f>t){ showMsg('g-range-info','시작일이 종료일보다 늦습니다.',false); return; }
+  loadGenRecent();
+}
+function clearGenRange(){
+  document.getElementById('g-range-from').value='';
+  document.getElementById('g-range-to').value='';
+  loadGenRecent();
+}
 async function loadGenRecent(){
+  const f=document.getElementById('g-range-from')?.value||'', t=document.getElementById('g-range-to')?.value||'';
+  const ranged=!!(f||t);
+  let q=`${SUPABASE_URL}/rest/v1/daily_han?select=*&order=date.desc`;
+  if(f) q+=`&date=gte.${f}`;
+  if(t) q+=`&date=lte.${t}`;
+  q+=ranged?'&limit=1000':'&limit=20';
+  const sub=document.getElementById('gen-recent-sub');
+  if(sub) sub.textContent=ranged?`(${f||'처음'} ~ ${t||'오늘'} · daily_han)`:'(최근 20일 · daily_han)';
+  renderGenRecentHead();
   try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/daily_han?select=*&order=date.desc&limit=20`,{headers:HDR});
+    const res=await fetch(q,{headers:HDR});
     const data=await res.json();
-    const tbody=document.getElementById('gen-recent-tbody');
-    if(!Array.isArray(data)||!data.length){tbody.innerHTML='<tr><td colspan="13" style="text-align:center;color:#888780;padding:20px;">데이터 없음</td></tr>';setStatus('✓ 연결됨','success');return;}
-    tbody.innerHTML=data.map(r=>`<tr>
-      <td>${r.date||''}</td><td>${r.day_of_week==='일'?'<span class="badge badge-sun">일</span>':(r.day_of_week||'')}</td>
-      <td class="num">${r.total_patients??'-'}</td><td class="num">${r.new_patients??'-'}</td><td class="num">${r.return_patients??'-'}</td>
-      <td class="num">${r.daily_revenue!=null?r.daily_revenue.toLocaleString():'-'}</td>
-      <td class="num">${r.cash!=null?r.cash.toLocaleString():'-'}</td><td class="num">${r.card!=null?r.card.toLocaleString():'-'}</td>
-      <td class="num">${r.insurance_claim!=null?r.insurance_claim.toLocaleString():'-'}</td>
-      <td class="num">${r.deposit!=null?r.deposit.toLocaleString():'-'}</td>
-      <td class="num">${r.leftmoney!=null?r.leftmoney.toLocaleString():'-'}</td>
-      <td class="num">${r.expected_pt!=null?r.expected_pt.toLocaleString():'-'}</td>
-      <td><button class="danger" style="padding:3px 10px;font-size:12px;" onclick="deleteHangangDaily('${r.date}')">삭제</button></td>
-    </tr>`).join('');
+    if(!res.ok) throw new Error(data.message||`HTTP ${res.status}`);
+    _genRecentRows=Array.isArray(data)?data:[];
+    renderGenRecentRows(_genRecentRows);
+    const info=document.getElementById('g-range-info');
+    if(info){ info.className='range-info'; info.textContent=ranged?`${_genRecentRows.length}건`:''; }
     setStatus('✓ 연결됨','success');
   }catch(e){showMsg('gen-form-msg','⚠ '+e.message,false);setStatus('⚠ 연결 실패: '+e.message,'error');}
 }
+applyDailyFieldOrder(getDailyFieldOrder());
 async function deleteHangangDaily(date){ if(!confirm(`${date} 삭제?`))return; try{ await fetch(`${SUPABASE_URL}/rest/v1/daily_han?date=eq.${date}`,{method:'DELETE',headers:HDR}); loadGenRecent(); }catch(e){} }
 
 /* ══ 예상 내원환자수 (management 프로젝트의 visits.next_visit_date 기준) ══
