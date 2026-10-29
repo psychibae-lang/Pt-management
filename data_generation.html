@@ -222,6 +222,17 @@ button.add-btn:hover { background: #e6f1fb; }
 #gen-recent-table th.grp2 { text-align: center; background: #f6f5f0; border-bottom: 0.5px solid #ddddd5; border-left: 1px solid #ddddd5; }
 #gen-recent-table .gl { border-left: 1px solid #ddddd5; }
 #gen-recent-table th small { display: block; font-size: 10px; font-weight: 400; color: #b4b2a9; }
+.freeze-scroll { overflow: auto; max-height: 460px; border-top: 0.5px solid #ddddd5; }
+/* 머리 2행 + 첫 열(날짜/월/년) 고정. collapse 테두리는 스크롤 시 사라지므로 separate + 그림자로 경계 표시 */
+#gen-recent-table { border-collapse: separate; border-spacing: 0; }
+#gen-recent-table thead th { position: sticky; top: 0; z-index: 2; background: #fff; box-shadow: inset 0 -0.5px 0 #ddddd5; }
+#gen-recent-table thead tr:nth-child(2) th { top: var(--hdr1, 0px); }
+#gen-recent-table thead th.grp { background: #eef4fb; }
+#gen-recent-table thead th.grp2 { background: #f6f5f0; }
+#gen-recent-table thead th.cum { background: #f6f9fd; }
+#gen-recent-table th.freeze-col, #gen-recent-table td.freeze-col { position: sticky; left: 0; z-index: 1; background: #fff; box-shadow: inset -1px 0 0 #ddddd5; }
+#gen-recent-table thead th.freeze-col { z-index: 3; }
+#gen-recent-table tr:hover td.freeze-col { background: #f5f5f0; }
 .range-row button.view-on { background: #185fa5; color: #fff; border-color: #185fa5; }
 #gen-recent-table th.grp { text-align: center; color: #185fa5; background: #eef4fb; border-bottom: 0.5px solid #c9dcf0; }
 #gen-recent-table th.cum, #gen-recent-table td.cum { background: #f6f9fd; }
@@ -408,7 +419,7 @@ tr:hover td { background: #f5f5f0; }
           <button type="button" class="secondary" id="g-btn-yearly" onclick="loadGenAgg('yearly')">년간조회</button>
           <span id="g-range-info" class="range-info"></span>
         </div>
-        <div style="overflow-x:auto;">
+        <div id="gen-recent-scroll" class="freeze-scroll">
           <table id="gen-recent-table">
             <thead id="gen-recent-thead"></thead>
             <tbody id="gen-recent-tbody"></tbody>
@@ -898,7 +909,34 @@ function resetDailyFieldOrder(){
 })();
 
 let _genRecentRows=null;
-function genTableCols(){ return getDailyFieldOrder().filter(k=>DAILY_COLS[k]); }
+/* 표에서는 날짜 열을 항상 맨 앞에 두고 고정한다 (나머지 열은 입력 칸 순서) */
+function genTableCols(){ return ['date',...getDailyFieldOrder().filter(k=>k!=='date'&&DAILY_COLS[k])]; }
+/* 머리 1행 높이만큼 2행을 내려 붙이고, 보이는 영역을 머리 + 데이터 10줄로 맞춘다 */
+function fitGenTable(){
+  const box=document.getElementById('gen-recent-scroll'), tbl=document.getElementById('gen-recent-table');
+  if(!box||!tbl||!tbl.tHead) return;
+  const r1=tbl.tHead.rows[0];
+  tbl.style.setProperty('--hdr1',(r1?r1.getBoundingClientRect().height:0)+'px');
+  const body=tbl.tBodies[0];
+  const rows=body?[...body.rows].slice(0,10):[];
+  const h=tbl.tHead.getBoundingClientRect().height+rows.reduce((s,r)=>s+r.getBoundingClientRect().height,0);
+  box.style.maxHeight=(body&&body.rows.length>10?Math.ceil(h)+2:Math.max(Math.ceil(h)+2,120))+'px';
+}
+function markFreezeCol(){
+  const tbl=document.getElementById('gen-recent-table'); if(!tbl) return;
+  tbl.querySelectorAll('.freeze-col').forEach(c=>c.classList.remove('freeze-col'));
+  if(tbl.tHead&&tbl.tHead.rows[0]&&tbl.tHead.rows[0].cells[0]) tbl.tHead.rows[0].cells[0].classList.add('freeze-col');
+  [...tbl.tBodies[0].rows].forEach(r=>{ if(r.cells.length>1&&r.cells[0]) r.cells[0].classList.add('freeze-col'); });
+  fitGenTable();
+  // 과거가 위에 있으므로 새로 불러오면 가장 최근 줄이 보이도록 맨 아래로 스크롤
+  const box=document.getElementById('gen-recent-scroll'); if(box) box.scrollTop=box.scrollHeight;
+}
+/* 표 내용이 바뀔 때마다(일별/월간/년간 모두) 첫 열 고정 + 높이 다시 계산 */
+(function(){
+  const tb=document.getElementById('gen-recent-tbody');
+  if(tb) new MutationObserver(markFreezeCol).observe(tb,{childList:true});
+  window.addEventListener('resize',fitGenTable);
+})();
 /* 누적 열: 1월 1일부터 해당 날짜까지의 합계. 작년 값은 작년 같은 월-일까지의 합계 */
 const CUM_GROUPS=[
   {key:'daily_revenue',th:'매출누적'},
