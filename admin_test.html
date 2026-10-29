@@ -649,7 +649,7 @@ const SCALES = {
     comment:'30문항, 최고점 60점, 절단값49. 확인-절단값15, 청결-절단값17, 느림-절단값13, 의심-절단값12.',
     qs:['1. 병균에 감염될지도 모른다는 생각 때문에 공중전화의 사용을 꺼린다.','2. 추잡한 생각들이 자주 떠오르고 그런 생각들을 지워버리기가 어렵다.','3. 대부분의 사람들에 비해 정직성에 대해 더 많은 관심을 가지고 있다.','4. 매사를 제시간에 끝낼 수 없어 일이 늦어진다.','5. 동물을 쓰다듬고 나서는 감염되지 않을까 하고 매우 걱정한다.','6. 어떤 일을 몇 번씩 확인하곤 한다.','7. 나는 매우 양심적이다','8. 내 의지와는 상반되는 불쾌한 생각들이 거의 날마다 떠올라 기분이 상한다.','9. 우연히 다른 사람과 몸이 부딪치면 지나치게 신경을 쓴다.','10. 내가 하는 단순한 일상사에 대해서 지나치게 신경을 쓴다.','11. 우리 부모님은 어렸을 때 매우 엄하게 나를 키우셨다.','12. 나는 일을 할 때 여러 번 반복해서 하기 때문에 내 일에 대해서는 환히 알고 있는 편이다.','13. 나는 다른 사람들보다 비누를 더 많이 쓰는 편이다.','14. 어떤 숫자들은 매우 불길한 의미를 지니고 있다고 생각한다.','15. 편지를 부치기 전에 쓴 것을 몇 번 씩 확인한다.','16. 외출하려고 옷을 입을 때는 시간이 많이 걸린다.','17. 나는 청결에 대해서 지나친 관심을 갖고 있다.','18. 내가 갖고 있는 주된 문제점 중 하나는 너무 세세한 것 까지 신경을 쓴다는 것이다.','19. 매우 깨끗이 정리되어 있는 화장실을 사용할 때는 주저하게 된다.','20. 나한테 가장 문제가 되는 것은 무엇이든지 반복 확인해야 하는 것이다.','21. 나는 병균이나 질병에 대해서 지나치게 걱정하는 편이다.','22. 나는 어떤 일을 한번 이상 확인하는 편이다.','23. 나는 일상적인 일을 할 때도 정해진 절차를 매우 엄격하게 따르려고 한다.','24. 돈을 만지고 난 다음에는 내 손이 더러워졌다는 생각이 든다.','25. 일상적인 일을 할 때도 세어보는 버릇이 있다.','26. 아침에 세수하는 시간이 오래 걸린다.','27. 나는 소독약을 많이 쓰는 편이다.','28. 일들을 반복해서 확인하느라고 매일 많은 시간을 허비한다.','29. 저녁에 옷을 건다거나 개어놓느라고 많은 시간을 쓰는 편이다.','30. 어떤 일을 매우 주의 깊게 했어도 그것이 아주 잘되지 않았다는 생각이 들곤 한다.'],
     qOpts:Array.from({length:30},()=>[[2,'예'],[1,'아니오']]),
-    score(a){const tot=a.filter(v=>v===2).length;const s2=[0,5,11,13,14,19,21,25].reduce((t,i)=>t+(a[i]===2?1:0),0);const s3=[0,4,8,12,16,18,20,23,25,26].reduce((t,i)=>t+(a[i]===2?1:0),0);const s4=[1,3,7,15,22,24,27,28].reduce((t,i)=>t+(a[i]===2?1:0),0);const s5=[2,6,9,10,11,17,29].reduce((t,i)=>t+(a[i]===2?1:0),0);const interp=tot<=43?'강박-정상':tot<=48?'강박-의심':'강박-절단값이상';return{s1:tot,display:`${tot}/ 확인${s2}-청결${s3}-느림${s4}-의심${s5}`,interp,copy:(d)=>`${d}/ MOCI/ ${tot}/ 확인 ${s2}- 청결 ${s3}- 느림 ${s4}- 의심 ${s5}/ ${interp}`};}},
+    score(a){const sum=ix=>ix.reduce((t,i)=>t+(a[i]||0),0);const tot=sum([...Array(30).keys()]);const s2=sum([0,5,11,13,14,19,21,25]);const s3=sum([0,4,8,12,16,18,20,23,25,26]);const s4=sum([1,3,7,15,22,24,27,28]);const s5=sum([2,6,9,10,11,17,29]);const interp=tot<=43?'강박-정상':tot<=48?'강박-의심':'강박-절단값이상';return{s1:tot,display:`${tot}/ 확인${s2}-청결${s3}-느림${s4}-의심${s5}`,interp,copy:(d)=>`${d}/ MOCI/ ${tot}/ 확인 ${s2}- 청결 ${s3}- 느림 ${s4}- 의심 ${s5}/ ${interp}`};}},
   docs:{no:19,title:'강박3',name:'DOCS',cat:'ocd',tag:'강박',hasQOpts:true,
     inst:'이 설문은 서로 다른 네 가지 종류의 걱정에 관한 것입니다. 지난 한 달 동안의 경험을 바탕으로 각 범주의 질문에 답해주시기 바랍니다.',
     comment:'20문항, 최고점 80점, 절단값24점.',
@@ -872,7 +872,7 @@ function getGraphUrl(scaleId, extra){
     moci:{
       labels:['MOCI'],data:[s1],
       bg:'rgba(250,170,188,0.90)',bc:'rgba(190,24,93,1)',
-      title:'44(의심) 49(심각한강박) 60(최고점)',max:55,
+      title:'44(의심) 49(심각한강박) 60(최고점)',max:60,
       lines:[
         {v:44,dash:true,c:'rgba(0,102,255,0.95)',lb:'44(의심)',p:'left'},
         {v:49,c:'rgba(255,0,0,0.95)',lb:'49(심각한강박)',p:'right'}
@@ -1119,7 +1119,7 @@ async function loadResults(){
     // 이름 검색: DB에서 직접 조회
     const{data:sess}=await sb.from('sessions').select('*').ilike('patient_name','%'+fName+'%').order('created_at',{ascending:false}).limit(200);
     const ids=(sess||[]).map(s=>s.id);
-    const{data:res}=ids.length>0?await sb.from('results').select('*').in('session_id',ids):{data:[]};
+    const{data:res}=ids.length>0?await sb.from('results').select('*').in('session_id',ids):{data:[]};fixMoci(res||[]);
     allSessions=sess||[];allResults=res||[];
   } else if(fScale){
     // 검사명 검색: results 테이블에서 scale_id로 직접 조회 후 session 조인
@@ -1127,7 +1127,7 @@ async function loadResults(){
     const since=days>0?new Date(Date.now()-days*86400000).toISOString():null;
     let resQ=sb.from('results').select('*').ilike('scale_id','%'+fScale+'%').order('completed_at',{ascending:false}).limit(500);
     if(since)resQ=resQ.gte('completed_at',since);
-    const{data:res}=await resQ;
+    const{data:res}=await resQ;fixMoci(res||[]);
     const sessIds=[...new Set((res||[]).map(r=>r.session_id))];
     const{data:sess}=sessIds.length>0?await sb.from('sessions').select('*').in('id',sessIds):{data:[]};
     allSessions=sess||[];allResults=res||[];
@@ -1139,7 +1139,7 @@ async function loadResults(){
     if(since)sessQ=sessQ.gte('created_at',since);
     const{data:sess}=await sessQ;
     const ids=(sess||[]).map(s=>s.id);
-    const{data:res}=ids.length>0?await sb.from('results').select('*').in('session_id',ids):{data:[]};
+    const{data:res}=ids.length>0?await sb.from('results').select('*').in('session_id',ids):{data:[]};fixMoci(res||[]);
     allSessions=sess||[];allResults=res||[];
   }
   renderTable();
@@ -1254,7 +1254,7 @@ async function saveSessionPDF(sessId){
   let results=allResults.filter(r=>r.session_id===sessId);
   if(results.length===0){
     const{data:rd}=await sb.from('results').select('*').eq('session_id',sessId);
-    results=rd||[];
+    results=fixMoci(rd||[]);
   }
   if(!sess||results.length===0){toast('데이터를 찾을 수 없습니다.');return;}
   
@@ -1418,7 +1418,7 @@ async function savePDF(sessId,scaleId){
   }
   if(!res){
     const{data:rd}=await sb.from('results').select('*').eq('session_id',sessId).eq('scale_id',scaleId).single();
-    res=rd;
+    res=rd;fixMoci(rd);
   }
   if(!sess||!res){toast('데이터를 찾을 수 없습니다.');return;}
   const sc=getScale(scaleId);
@@ -1618,7 +1618,7 @@ async function openGraph2(sessId,scaleId){
   let res=allResults.find(r=>r.session_id===sessId&&r.scale_id===scaleId);
   if(!res){
     const{data:rd}=await sb.from('results').select('*').eq('session_id',sessId).eq('scale_id',scaleId).single();
-    res=rd;
+    res=rd;fixMoci(rd);
   }
   if(!res){toast('데이터 없음');return;}
   const extra=tryParse(res.extra_scores||'{}');
@@ -1659,7 +1659,7 @@ async function searchPatient(){
   if(!q){toast('이름 또는 번호를 입력하세요.');return;}
   const{data:sessions}=await sb.from('sessions').select('*').ilike('patient_name',q).order('created_at',{ascending:false});
   if(!sessions||sessions.length===0){document.getElementById('pt-result').innerHTML='<div class="empty">검색 결과가 없습니다.</div>';return;}
-  const{data:results}=await sb.from('results').select('*').in('session_id',sessions.map(s=>s.id));
+  const{data:results}=await sb.from('results').select('*').in('session_id',sessions.map(s=>s.id));fixMoci(results||[]);
   document.getElementById('pt-result').innerHTML=sessions.map(sess=>{
     const sr=(results||[]).filter(r=>r.session_id===sess.id);
     const dt=new Date(sess.created_at);
@@ -1698,6 +1698,18 @@ function copyText(t){navigator.clipboard.writeText(t).then(()=>toast('복사되�
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function closeModal(id){document.getElementById(id).style.display='none';}
 function tryParse(s){try{return JSON.parse(s);}catch{return{};}}
+// MOCI 예전 결과(예 개수로 잘못 계산된 것)를 저장된 응답으로 다시 계산 (예=2, 아니오=1 합산)
+function fixMoci(rows){
+  (Array.isArray(rows)?rows:[rows]).forEach(r=>{
+    if(!r||r.scale_id!=='moci'||!Array.isArray(r.answers)||r.answers.length!==30)return;
+    const sc=SCALES.moci;const n=sc.score(r.answers);
+    const old=tryParse(r.extra_scores||'{}');
+    const ds=(r.copy_text||'').split('/')[0].trim()||'';
+    r.score=n.s1;r.interp=n.interp;r.copy_text=n.copy(ds);
+    r.extra_scores=JSON.stringify({...old,s1:n.s1,display:n.display,interp:n.interp});
+  });
+  return rows;
+}
 function p2(n){return String(n).padStart(2,'0');}
 
 // 초기화 - DOM 로드 후 실행
@@ -1725,7 +1737,7 @@ async function downloadBackup(){
   
   // Supabase에서 전체 데이터 가져오기
   const{data:sessions}=await sb.from('sessions').select('*').order('created_at',{ascending:false});
-  const{data:results}=await sb.from('results').select('*').order('completed_at',{ascending:false});
+  const{data:results}=await sb.from('results').select('*').order('completed_at',{ascending:false});fixMoci(results||[]);
   
   if(!sessions||!results){toast('데이터를 불러올 수 없습니다.');return;}
 
@@ -1961,7 +1973,7 @@ async function copySessionAll(sessId){
   if(results.length===0){
     // 메모리에 없으면 DB에서 조회
     const{data:res}=await sb.from('results').select('*').eq('session_id',sessId);
-    results=(res||[]).filter(r=>r.copy_text);
+    results=fixMoci(res||[]).filter(r=>r.copy_text);
   }
   if(results.length===0){toast('복사할 데이터가 없습니다.');return;}
   
