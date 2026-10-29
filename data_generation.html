@@ -217,22 +217,25 @@ button.add-btn:hover { background: #e6f1fb; }
 .range-row button { padding: 6px 14px; font-size: 13px; }
 .range-row .range-info { font-size: 12px; color: #888780; }
 /* 누적 열 (구글시트 한강기초자료와 동일) */
-#gen-recent-table th, #gen-recent-table td { white-space: nowrap; }
-#gen-recent-table thead th { vertical-align: bottom; }
-#gen-recent-table th.grp2 { text-align: center; background: #f6f5f0; border-bottom: 0.5px solid #ddddd5; border-left: 1px solid #ddddd5; }
-#gen-recent-table .gl { border-left: 1px solid #ddddd5; }
-#gen-recent-table th small { display: block; font-size: 10px; font-weight: 400; color: #b4b2a9; }
+.freeze-table th, .freeze-table td { white-space: nowrap; }
+.freeze-table thead th { vertical-align: bottom; }
+.freeze-table th.grp2 { text-align: center; background: #f6f5f0; border-bottom: 0.5px solid #ddddd5; border-left: 1px solid #ddddd5; }
+.freeze-table .gl { border-left: 1px solid #ddddd5; }
+.freeze-table th small { display: block; font-size: 10px; font-weight: 400; color: #b4b2a9; }
 .freeze-scroll { overflow: auto; max-height: 460px; border-top: 0.5px solid #ddddd5; }
 /* 머리 2행 + 첫 열(날짜/월/년) 고정. collapse 테두리는 스크롤 시 사라지므로 separate + 그림자로 경계 표시 */
-#gen-recent-table { border-collapse: separate; border-spacing: 0; }
-#gen-recent-table thead th { position: sticky; top: 0; z-index: 2; background: #fff; box-shadow: inset 0 -0.5px 0 #ddddd5; }
-#gen-recent-table thead tr:nth-child(2) th { top: var(--hdr1, 0px); }
-#gen-recent-table thead th.grp { background: #eef4fb; }
-#gen-recent-table thead th.grp2 { background: #f6f5f0; }
-#gen-recent-table thead th.cum { background: #f6f9fd; }
-#gen-recent-table th.freeze-col, #gen-recent-table td.freeze-col { position: sticky; left: 0; z-index: 1; background: #fff; box-shadow: inset -1px 0 0 #ddddd5; }
-#gen-recent-table thead th.freeze-col { z-index: 3; }
-#gen-recent-table tr:hover td.freeze-col { background: #f5f5f0; }
+.freeze-table { border-collapse: separate; border-spacing: 0; }
+.freeze-table thead th { position: sticky; top: 0; z-index: 2; background: #fff; box-shadow: inset 0 -0.5px 0 #ddddd5; }
+.freeze-table thead tr:nth-child(2) th { top: var(--hdr1, 0px); }
+.freeze-table thead th.grp { background: #eef4fb; }
+.freeze-table thead th.grp2 { background: #f6f5f0; }
+.freeze-table thead th.cum { background: #f6f9fd; }
+.freeze-table th.freeze-col, .freeze-table td.freeze-col { position: sticky; left: 0; z-index: 1; background: #fff; box-shadow: inset -1px 0 0 #ddddd5; }
+.freeze-table thead th.freeze-col { z-index: 3; }
+.freeze-table tr:hover td.freeze-col { background: #f5f5f0; }
+.freeze-table th.grp3 { text-align: center; color: #3b6d11; background: #eef5e6; border-bottom: 0.5px solid #cfe3b8; border-left: 1px solid #ddddd5; }
+.freeze-table thead th.grp3 { background: #eef5e6; }
+.range-row input[type=month] { width: 150px; }
 .range-row button.view-on { background: #185fa5; color: #fff; border-color: #185fa5; }
 #gen-recent-table th.grp { text-align: center; color: #185fa5; background: #eef4fb; border-bottom: 0.5px solid #c9dcf0; }
 #gen-recent-table th.cum, #gen-recent-table td.cum { background: #f6f9fd; }
@@ -420,7 +423,7 @@ tr:hover td { background: #f5f5f0; }
           <span id="g-range-info" class="range-info"></span>
         </div>
         <div id="gen-recent-scroll" class="freeze-scroll">
-          <table id="gen-recent-table">
+          <table id="gen-recent-table" class="freeze-table">
             <thead id="gen-recent-thead"></thead>
             <tbody id="gen-recent-tbody"></tbody>
           </table>
@@ -519,12 +522,22 @@ tr:hover td { background: #f5f5f0; }
       </div>
 
       <div class="recent-card">
-        <h2>최근 입력 데이터 <span style="font-size:12px;font-weight:400;color:#888780;">(monthly_house)</span></h2>
-        <div style="overflow-x:auto;">
-          <table>
+        <h2>최근 입력 데이터 <span id="hm-recent-sub" style="font-size:12px;font-weight:400;color:#888780;">(최근 12개월 · monthly_house)</span></h2>
+        <div class="range-row">
+          <input type="month" id="hm-range-from" title="시작월"><span style="color:#888780;">~</span><input type="month" id="hm-range-to" title="종료월">
+          <button type="button" onclick="loadHmRange()">기간 조회</button>
+          <button type="button" class="secondary" onclick="clearHmRange()">최근 12개월</button>
+          <span id="hm-range-info" class="range-info"></span>
+        </div>
+        <div id="hm-recent-scroll" class="freeze-scroll">
+          <table id="hm-recent-table" class="freeze-table">
             <thead><tr>
-              <th>월</th><th class="num">한강 매출</th><th class="num">한강 지출</th><th class="num">한강 실수입</th>
-              <th class="num">사랑 매출</th><th class="num">사랑 지출</th><th class="num">사랑 실수입</th><th></th>
+              <th rowspan="2">월</th><th rowspan="2" class="num">한강 매출</th><th rowspan="2" class="num">한강 지출</th><th rowspan="2" class="num">한강 실수입</th>
+              <th rowspan="2" class="num">사랑 매출</th><th rowspan="2" class="num">사랑 지출</th><th rowspan="2" class="num">사랑 실수입</th>
+              <th colspan="3" class="grp2">가계</th><th colspan="6" class="grp3">선교헌금 · 예비비</th><th rowspan="2"></th>
+            </tr><tr>
+              <th class="num gl">가계수입</th><th class="num">11조</th><th class="num">선교헌금</th>
+              <th class="num gl">선교헌금합</th><th class="num">예비비합</th><th class="num">한강예비비</th><th class="num">사랑예비비</th><th class="num">이번달예비비(한강)</th><th class="num">이번달예비비(사랑)</th>
             </tr></thead>
             <tbody id="hm-recent-tbody"></tbody>
           </table>
@@ -912,8 +925,8 @@ let _genRecentRows=null;
 /* 표에서는 날짜 열을 항상 맨 앞에 두고 고정한다 (나머지 열은 입력 칸 순서) */
 function genTableCols(){ return ['date',...getDailyFieldOrder().filter(k=>k!=='date'&&DAILY_COLS[k])]; }
 /* 머리 1행 높이만큼 2행을 내려 붙이고, 보이는 영역을 머리 + 데이터 10줄로 맞춘다 */
-function fitGenTable(){
-  const box=document.getElementById('gen-recent-scroll'), tbl=document.getElementById('gen-recent-table');
+function fitGenTable(boxId='gen-recent-scroll',tblId='gen-recent-table'){
+  const box=document.getElementById(boxId), tbl=document.getElementById(tblId);
   if(!box||!tbl||!tbl.tHead) return;
   const r1=tbl.tHead.rows[0];
   tbl.style.setProperty('--hdr1',(r1?r1.getBoundingClientRect().height:0)+'px');
@@ -922,20 +935,22 @@ function fitGenTable(){
   const h=tbl.tHead.getBoundingClientRect().height+rows.reduce((s,r)=>s+r.getBoundingClientRect().height,0);
   box.style.maxHeight=(body&&body.rows.length>10?Math.ceil(h)+2:Math.max(Math.ceil(h)+2,120))+'px';
 }
-function markFreezeCol(){
-  const tbl=document.getElementById('gen-recent-table'); if(!tbl) return;
+function markFreezeCol(boxId='gen-recent-scroll',tblId='gen-recent-table'){
+  const tbl=document.getElementById(tblId); if(!tbl) return;
   tbl.querySelectorAll('.freeze-col').forEach(c=>c.classList.remove('freeze-col'));
   if(tbl.tHead&&tbl.tHead.rows[0]&&tbl.tHead.rows[0].cells[0]) tbl.tHead.rows[0].cells[0].classList.add('freeze-col');
   [...tbl.tBodies[0].rows].forEach(r=>{ if(r.cells.length>1&&r.cells[0]) r.cells[0].classList.add('freeze-col'); });
-  fitGenTable();
+  fitGenTable(boxId,tblId);
   // 과거가 위에 있으므로 새로 불러오면 가장 최근 줄이 보이도록 맨 아래로 스크롤
-  const box=document.getElementById('gen-recent-scroll'); if(box) box.scrollTop=box.scrollHeight;
+  const box=document.getElementById(boxId); if(box) box.scrollTop=box.scrollHeight;
 }
 /* 표 내용이 바뀔 때마다(일별/월간/년간 모두) 첫 열 고정 + 높이 다시 계산 */
 (function(){
   const tb=document.getElementById('gen-recent-tbody');
-  if(tb) new MutationObserver(markFreezeCol).observe(tb,{childList:true});
-  window.addEventListener('resize',fitGenTable);
+  if(tb) new MutationObserver(()=>markFreezeCol()).observe(tb,{childList:true});
+  const hb=document.getElementById('hm-recent-tbody');
+  if(hb) new MutationObserver(()=>markFreezeCol('hm-recent-scroll','hm-recent-table')).observe(hb,{childList:true});
+  window.addEventListener('resize',()=>{ fitGenTable(); fitGenTable('hm-recent-scroll','hm-recent-table'); });
 })();
 /* 누적 열: 1월 1일부터 해당 날짜까지의 합계. 작년 값은 작년 같은 월-일까지의 합계 */
 const CUM_GROUPS=[
@@ -1520,12 +1535,36 @@ function editHouseMonthly(id,month){
   document.querySelector('.ie-form-card')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
+/* 기간 조회: 시작월~종료월이 있으면 그 기간 전체, 없으면 최근 12개월. 과거가 위로 오게 정렬 */
+function loadHmRange(){
+  const f=document.getElementById('hm-range-from').value, t=document.getElementById('hm-range-to').value;
+  if(!f&&!t){ showMsg('hm-range-info','시작월 또는 종료월을 입력하세요.',false); return; }
+  if(f&&t&&f>t){ showMsg('hm-range-info','시작월이 종료월보다 늦습니다.',false); return; }
+  loadHmRecent();
+}
+function clearHmRange(){
+  document.getElementById('hm-range-from').value='';
+  document.getElementById('hm-range-to').value='';
+  loadHmRecent();
+}
 async function loadHmRecent(){
+  const f=document.getElementById('hm-range-from')?.value||'', t=document.getElementById('hm-range-to')?.value||'';
+  const ranged=!!(f||t);
+  let q=`${SUPABASE_URL}/rest/v1/monthly_house?select=*&order=year_month.${ranged?'asc':'desc'},id.asc`;
+  if(f) q+=`&year_month=gte.${f}`;
+  if(t) q+=`&year_month=lte.${t}`;
+  q+=ranged?'&limit=1000':'&limit=12';
+  const sub=document.getElementById('hm-recent-sub');
+  if(sub) sub.textContent=ranged?`(${f||'처음'} ~ ${t||'최근'} · monthly_house)`:'(최근 12개월 · monthly_house)';
   try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/monthly_house?select=*&order=year_month.desc&limit=12`,{headers:HDR});
-    const data=await res.json();
+    const res=await fetch(q,{headers:HDR});
+    let data=await res.json();
+    if(!res.ok) throw new Error(data.message||`HTTP ${res.status}`);
     const tbody=document.getElementById('hm-recent-tbody');
-    if(!Array.isArray(data)||!data.length){ tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#888780;padding:20px;">데이터 없음</td></tr>'; return; }
+    const info=document.getElementById('hm-range-info');
+    if(info){ info.className='range-info'; info.textContent=ranged&&Array.isArray(data)?`${data.length}건`:''; }
+    if(!Array.isArray(data)||!data.length){ tbody.innerHTML='<tr><td colspan="17" style="text-align:center;color:#888780;padding:20px;">데이터 없음</td></tr>'; return; }
+    if(!ranged) data=data.reverse();
     tbody.innerHTML=data.map(r=>{
       const idArg = r.id!=null ? `'${r.id}'` : 'null';
       return `<tr>
@@ -1536,6 +1575,9 @@ async function loadHmRecent(){
       <td class="num">${r.sarang_revenue!=null?r.sarang_revenue.toLocaleString():'-'}</td>
       <td class="num">${r.sarang_expense!=null?r.sarang_expense.toLocaleString():'-'}</td>
       <td class="num">${r.sarang_net!=null?r.sarang_net.toLocaleString():'-'}</td>
+      <td class="num gl">${nCell(r.income_total)}</td><td class="num">${nCell(r['11jo'])}</td><td class="num">${nCell(r.mission)}</td>
+      <td class="num gl">${nCell(r.mission_total)}</td><td class="num">${nCell(r.reserve_total)}</td><td class="num">${nCell(r.reserve_h)}</td><td class="num">${nCell(r.reserve_s)}</td>
+      <td class="num">${r.reserve_h_in?nCell(r.reserve_h_in):''}</td><td class="num">${r.reserve_s_in?nCell(r.reserve_s_in):''}</td>
       <td style="white-space:nowrap;">
         <button class="secondary" style="padding:3px 10px;font-size:12px;margin-right:4px;" onclick="editHouseMonthly(${idArg},'${r.year_month}')">편집</button>
         <button class="danger" style="padding:3px 10px;font-size:12px;" onclick="deleteHouseMonthly(${idArg},'${r.year_month}')">삭제</button>
