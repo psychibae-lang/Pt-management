@@ -233,6 +233,7 @@ button.add-btn:hover { background: #e6f1fb; }
 .freeze-table th.freeze-col, .freeze-table td.freeze-col { position: sticky; left: 0; z-index: 1; background: #fff; box-shadow: inset -1px 0 0 #ddddd5; }
 .freeze-table thead th.freeze-col { z-index: 3; }
 .freeze-table tr:hover td.freeze-col { background: #f5f5f0; }
+.freeze-table td.memo-cell { white-space: pre-line; min-width: 280px; max-width: 380px; word-break: keep-all; font-size: 12px; color: #444441; line-height: 1.5; vertical-align: top; }
 .freeze-table th.grp3 { text-align: center; color: #3b6d11; background: #eef5e6; border-bottom: 0.5px solid #cfe3b8; border-left: 1px solid #ddddd5; }
 .freeze-table thead th.grp3 { background: #eef5e6; }
 .range-row input[type=month] { width: 150px; }
@@ -534,10 +535,10 @@ tr:hover td { background: #f5f5f0; }
             <thead><tr>
               <th rowspan="2">월</th><th rowspan="2" class="num">한강 매출</th><th rowspan="2" class="num">한강 지출</th><th rowspan="2" class="num">한강 실수입</th>
               <th rowspan="2" class="num">사랑 매출</th><th rowspan="2" class="num">사랑 지출</th><th rowspan="2" class="num">사랑 실수입</th>
-              <th colspan="3" class="grp2">가계</th><th colspan="6" class="grp3">선교헌금 · 예비비</th><th rowspan="2"></th>
+              <th colspan="3" class="grp2">가계</th><th colspan="6" class="grp3">선교헌금 · 예비비</th><th colspan="2" class="grp3">예비비 사용내역</th><th rowspan="2"></th>
             </tr><tr>
               <th class="num gl">가계수입</th><th class="num">11조</th><th class="num">선교헌금</th>
-              <th class="num gl">선교헌금합</th><th class="num">예비비합</th><th class="num">한강예비비</th><th class="num">사랑예비비</th><th class="num">이번달예비비(한강)</th><th class="num">이번달예비비(사랑)</th>
+              <th class="num gl">선교헌금합</th><th class="num">예비비합</th><th class="num">한강예비비</th><th class="num">사랑예비비</th><th class="num">이번달예비비<br>(한강)</th><th class="num">이번달예비비<br>(사랑)</th><th class="gl">한강예비비 내역</th><th>사랑예비비 내역</th>
             </tr></thead>
             <tbody id="hm-recent-tbody"></tbody>
           </table>
@@ -1571,7 +1572,7 @@ async function loadHmRecent(){
     const tbody=document.getElementById('hm-recent-tbody');
     const info=document.getElementById('hm-range-info');
     if(info){ info.className='range-info'; info.textContent=ranged&&Array.isArray(data)?`${data.length}건`:''; }
-    if(!Array.isArray(data)||!data.length){ tbody.innerHTML='<tr><td colspan="17" style="text-align:center;color:#888780;padding:20px;">데이터 없음</td></tr>'; return; }
+    if(!Array.isArray(data)||!data.length){ tbody.innerHTML='<tr><td colspan="19" style="text-align:center;color:#888780;padding:20px;">데이터 없음</td></tr>'; return; }
     if(!ranged) data=data.reverse();
     tbody.innerHTML=data.map(r=>{
       const idArg = r.id!=null ? `'${r.id}'` : 'null';
@@ -1586,6 +1587,7 @@ async function loadHmRecent(){
       <td class="num gl">${nCell(r.income_total)}</td><td class="num">${nCell(r['11jo'])}</td><td class="num">${nCell(r.mission)}</td>
       <td class="num gl">${nCell(r.mission_total)}</td><td class="num">${nCell(r.reserve_total)}</td><td class="num">${nCell(r.reserve_h)}</td><td class="num">${nCell(r.reserve_s)}</td>
       <td class="num">${r.reserve_h_in?nCell(r.reserve_h_in):''}</td><td class="num">${r.reserve_s_in?nCell(r.reserve_s_in):''}</td>
+      <td class="memo-cell gl">${r.reserve_h_m?escapeHtml(r.reserve_h_m):''}</td><td class="memo-cell">${r.reserve_s_m?escapeHtml(r.reserve_s_m):''}</td>
       <td style="white-space:nowrap;">
         <button class="secondary" style="padding:3px 10px;font-size:12px;margin-right:4px;" onclick="editHouseMonthly(${idArg},'${r.year_month}')">편집</button>
         <button class="danger" style="padding:3px 10px;font-size:12px;" onclick="deleteHouseMonthly(${idArg},'${r.year_month}')">삭제</button>
