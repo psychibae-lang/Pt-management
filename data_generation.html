@@ -528,11 +528,12 @@ tr:hover td { background: #f5f5f0; }
           <input type="month" id="hm-range-from" title="시작월"><span style="color:#888780;">~</span><input type="month" id="hm-range-to" title="종료월">
           <button type="button" onclick="loadHmRange()">기간 조회</button>
           <button type="button" class="secondary" onclick="clearHmRange()">최근 12개월</button>
+          <button type="button" class="secondary" id="hm-btn-yearly" onclick="loadHmYearly()">년간조회</button>
           <span id="hm-range-info" class="range-info"></span>
         </div>
         <div id="hm-recent-scroll" class="freeze-scroll">
           <table id="hm-recent-table" class="freeze-table">
-            <thead><tr>
+            <thead id="hm-recent-thead"><tr>
               <th rowspan="2">월</th><th rowspan="2" class="num">한강 매출</th><th rowspan="2" class="num">한강 지출</th><th rowspan="2" class="num">한강 실수입</th>
               <th rowspan="2" class="num">사랑 매출</th><th rowspan="2" class="num">사랑 지출</th><th rowspan="2" class="num">사랑 실수입</th>
               <th colspan="3" class="grp2">가계</th><th colspan="6" class="grp3">선교헌금 · 예비비</th><th colspan="2" class="grp3">예비비 사용내역</th><th rowspan="2"></th>
@@ -1545,6 +1546,16 @@ function editHouseMonthly(id,month){
 }
 
 /* 기간 조회: 시작월~종료월이 있으면 그 기간 전체, 없으면 최근 12개월. 과거가 위로 오게 정렬 */
+/* 월간(기본) / 년간 보기. 기간 조회는 지금 보기를 유지하고, 최근 12개월은 월간으로 돌아간다 */
+let _hmView='monthly';
+let _hmMonthlyHead=null;
+function setHmView(v){
+  const th=document.getElementById('hm-recent-thead');
+  if(_hmMonthlyHead==null&&th) _hmMonthlyHead=th.innerHTML;
+  _hmView=v;
+  document.getElementById('hm-btn-yearly')?.classList.toggle('view-on',v==='yearly');
+  if(v==='monthly'&&th&&_hmMonthlyHead!=null) th.innerHTML=_hmMonthlyHead;
+}
 function loadHmRange(){
   const f=document.getElementById('hm-range-from').value, t=document.getElementById('hm-range-to').value;
   if(!f&&!t){ showMsg('hm-range-info','시작월 또는 종료월을 입력하세요.',false); return; }
@@ -1554,9 +1565,68 @@ function loadHmRange(){
 function clearHmRange(){
   document.getElementById('hm-range-from').value='';
   document.getElementById('hm-range-to').value='';
+  setHmView('monthly');
   loadHmRecent();
 }
-async function loadHmRecent(){
+function loadHmRecent(){ return _hmView==='yearly'?loadHmYearly():loadHmMonthly(); }
+
+/* 년간조회 — 구글시트 병원한달통계(년간)와 같은 구성.
+   매출·지출·실수입·가계수입·11조·선교헌금·연간예비비는 그해 합계,
+   선교헌금합·예비비합·한강/사랑예비비는 그해 마지막 달(연말) 값, 예비비 내역은 월별로 모아서 표시 */
+async function loadHmYearly(){
+  setHmView('yearly');
+  const f=document.getElementById('hm-range-from')?.value||'', t=document.getElementById('hm-range-to')?.value||'';
+  const fy=f?f.slice(0,4):'', ty=t?t.slice(0,4):'';
+  const sub=document.getElementById('hm-recent-sub');
+  if(sub) sub.textContent=`(년간 · ${(fy||ty)?`${fy||'처음'} ~ ${ty||'최근'} · `:''}monthly_house)`;
+  const grp=(t,n,cls)=>`<th colspan="${n}" class="${cls}">${t}</th>`;
+  document.getElementById('hm-recent-thead').innerHTML=`<tr>
+    <th rowspan="2">년</th><th rowspan="2" class="num">한강 매출</th><th rowspan="2" class="num">한강 지출</th><th rowspan="2" class="num">한강 실수입</th>
+    <th rowspan="2" class="num">사랑 매출</th><th rowspan="2" class="num">사랑 지출</th><th rowspan="2" class="num">사랑 실수입</th>
+    ${grp('가계',3,'grp2')}${grp('선교헌금 · 예비비',6,'grp3')}${grp('예비비 사용내역',2,'grp3')}
+  </tr><tr>
+    <th class="num gl">가계수입</th><th class="num">11조</th><th class="num">선교헌금</th>
+    <th class="num gl">선교헌금합<br>(연말기준)</th><th class="num">예비비합<br>(연말기준)</th><th class="num">한강예비비<br>(연말기준)</th><th class="num">사랑예비비<br>(연말기준)</th>
+    <th class="num">연간예비비<br>(한강)</th><th class="num">연간예비비<br>(사랑)</th><th class="gl">한강예비비 내역</th><th>사랑예비비 내역</th>
+  </tr>`;
+  const tbody=document.getElementById('hm-recent-tbody');
+  loading(true);
+  try{
+    let q=`${SUPABASE_URL}/rest/v1/monthly_house?select=*&order=year_month.asc,id.asc&limit=5000`;
+    if(fy) q+=`&year_month=gte.${fy}-01`;
+    if(ty) q+=`&year_month=lte.${ty}-12`;
+    const res=await fetch(q,{headers:HDR});
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.message||`HTTP ${res.status}`);
+    if(_hmView!=='yearly') return;
+    const SUM=['han_revenue','han_expense','han_net','sarang_revenue','sarang_expense','sarang_net','income_total','11jo','mission','reserve_h_in','reserve_s_in'];
+    const END=['mission_total','reserve_total','reserve_h','reserve_s'];
+    const Y={};
+    (Array.isArray(data)?data:[]).forEach(r=>{
+      const y=(r.year_month||'').slice(0,4); if(!y) return;
+      const a=Y[y]||(Y[y]={sum:{},end:{},hm:[],sm:[]});
+      SUM.forEach(k=>{ if(r[k]!=null) a.sum[k]=(a.sum[k]||0)+Number(r[k]); });
+      END.forEach(k=>{ if(r[k]!=null) a.end[k]=Number(r[k]); }); // 오름차순이라 마지막으로 남는 값이 연말 값
+      const m=(r.year_month||'').slice(5,7);
+      if(r.reserve_h_m) a.hm.push(`[${m}월] ${r.reserve_h_m}`);
+      if(r.reserve_s_m) a.sm.push(`[${m}월] ${r.reserve_s_m}`);
+    });
+    const years=Object.keys(Y).sort();
+    const info=document.getElementById('hm-range-info'); if(info){ info.className='range-info'; info.textContent=`${years.length}년`; }
+    if(!years.length){ tbody.innerHTML='<tr><td colspan="18" style="text-align:center;color:#888780;padding:20px;">데이터 없음</td></tr>'; return; }
+    const s=(a,k)=>a.sum[k]!=null?nCell(a.sum[k]):'-', e=(a,k)=>a.end[k]!=null?nCell(a.end[k]):'-';
+    tbody.innerHTML=years.map(y=>{ const a=Y[y]; return `<tr><td>${y}</td>
+      <td class="num">${s(a,'han_revenue')}</td><td class="num">${s(a,'han_expense')}</td><td class="num">${s(a,'han_net')}</td>
+      <td class="num">${s(a,'sarang_revenue')}</td><td class="num">${s(a,'sarang_expense')}</td><td class="num">${s(a,'sarang_net')}</td>
+      <td class="num gl">${s(a,'income_total')}</td><td class="num">${s(a,'11jo')}</td><td class="num">${s(a,'mission')}</td>
+      <td class="num gl">${e(a,'mission_total')}</td><td class="num">${e(a,'reserve_total')}</td><td class="num">${e(a,'reserve_h')}</td><td class="num">${e(a,'reserve_s')}</td>
+      <td class="num">${a.sum.reserve_h_in?nCell(a.sum.reserve_h_in):''}</td><td class="num">${a.sum.reserve_s_in?nCell(a.sum.reserve_s_in):''}</td>
+      <td class="memo-cell gl">${escapeHtml(a.hm.join('\n'))}</td><td class="memo-cell">${escapeHtml(a.sm.join('\n'))}</td></tr>`; }).join('');
+  }catch(err){ showMsg('hm-range-info','⚠ '+err.message,false); }
+  finally{ loading(false); }
+}
+async function loadHmMonthly(){
+  setHmView('monthly');
   const f=document.getElementById('hm-range-from')?.value||'', t=document.getElementById('hm-range-to')?.value||'';
   const ranged=!!(f||t);
   let q=`${SUPABASE_URL}/rest/v1/monthly_house?select=*&order=year_month.${ranged?'asc':'desc'},id.asc`;
