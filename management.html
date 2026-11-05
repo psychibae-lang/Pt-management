@@ -1090,8 +1090,12 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
   <div class="tabs" id="alignCtrl_stats" style="margin-bottom:12px;"><button class="tab" onclick="setTabAlign('stats','left')">왼쪽</button><button class="tab" onclick="setTabAlign('stats','center')">가운데</button><button class="tab" onclick="setTabAlign('stats','right')">오른쪽</button></div>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-      <div class="card-title" style="margin-bottom:0;">📊 내원현황 (오늘~90일)</div>
-      <div style="display:flex;align-items:center;gap:10px;">
+      <div class="card-title" style="margin-bottom:0;">📊 내원현황 (기간 조회)</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <input type="date" id="statsStartDate" style="font-size:12px;padding:5px 8px;border:1px solid var(--border,#d0d5e0);border-radius:6px;" title="시작날짜">
+        <span style="font-size:12px;color:var(--text2);">~</span>
+        <input type="date" id="statsEndDate" style="font-size:12px;padding:5px 8px;border:1px solid var(--border,#d0d5e0);border-radius:6px;" title="끝날짜">
+        <button class="btn" onclick="resetStatsRange()" style="font-size:12px;padding:6px 10px;" title="오늘부터 90일로 되돌리기">90일</button>
         <span id="statsTotalCount" style="font-size:12px;color:var(--text2);"></span>
         <button id="statsLoadBtn" class="btn btn-primary" onclick="loadVisitStats()" style="font-size:12px;padding:6px 12px;">🔍 조회</button>
       </div>
@@ -2493,16 +2497,20 @@ async function sendSms(){
 async function loadVisitStats(){
   var btn=document.getElementById('statsLoadBtn');
   btn.disabled=true;btn.textContent='조회 중...';
-  setStatus('statsStatus','loading','90일 내원현황 조회 중...');
   try{
-    // 오늘부터 90일 날짜 배열 생성
+    // 시작날짜~끝날짜 입력값 (비어 있으면 오늘~90일)
+    var sIn=document.getElementById('statsStartDate'),eIn=document.getElementById('statsEndDate');
+    if(!sIn.value||!eIn.value) resetStatsRange();
+    var sp=sIn.value.split('-'),ep=eIn.value.split('-');
+    var startD=new Date(+sp[0],+sp[1]-1,+sp[2]),endD=new Date(+ep[0],+ep[1]-1,+ep[2]);
+    if(endD<startD) throw new Error('끝날짜가 시작날짜보다 앞입니다.');
     var dates=[];
-    var base=new Date();
-    for(var i=0;i<90;i++){
-      var d=new Date(base);
-      d.setDate(d.getDate()+i);
+    for(var d=new Date(startD);d<=endD;d.setDate(d.getDate()+1)){
       dates.push(toD6(d));
+      if(dates.length>366) throw new Error('조회 기간은 최대 366일까지 가능합니다.');
     }
+    var rangeLabel=toD6(startD)+'~'+toD6(endD)+' ('+dates.length+'일)';
+    setStatus('statsStatus','loading',rangeLabel+' 내원현황 조회 중...');
 
     // Supabase에서 해당 기간 visits 한번에 조회
     var inFilter=dates.join(',');
@@ -2538,7 +2546,7 @@ async function loadVisitStats(){
     var days=['일','월','화','수','목','금','토'];
     var totalExpected=0;
 
-    // 날짜별 인원수 배열 + 뒤에서부터 누적합(그 날짜부터 90일 끝까지 남은 총 예상환자수) 계산
+    // 날짜별 인원수 배열 + 뒤에서부터 누적합(그 날짜부터 기간 끝까지 남은 총 예상환자수) 계산
     var counts=dates.map(function(d6){return (grouped[d6]||[]).length;});
     var cumFromHere=new Array(counts.length);
     var running=0;
@@ -2575,11 +2583,18 @@ async function loadVisitStats(){
       tbody.appendChild(tr);
     });
 
-    document.getElementById('statsTotalCount').textContent='90일 총 예상환자: '+totalExpected+'명 (오늘 제외: '+(totalExpected-(grouped[toD6(new Date())]||[]).length)+'명)';
+    document.getElementById('statsTotalCount').textContent=rangeLabel+' 총 예상환자: '+totalExpected+'명 (오늘 제외: '+(totalExpected-(grouped[toD6(new Date())]||[]).length)+'명)';
     document.getElementById('statsTableWrap').classList.remove('hidden');
     setStatus('statsStatus','success','조회 완료');
   }catch(err){setStatus('statsStatus','error','조회 실패: '+err.message);}
   finally{btn.disabled=false;btn.textContent='🔍 조회';}
+}
+
+function resetStatsRange(){
+  function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  var t=new Date(),e=new Date();e.setDate(e.getDate()+89);
+  document.getElementById('statsStartDate').value=iso(t);
+  document.getElementById('statsEndDate').value=iso(e);
 }
 
 function downloadStatsCsv(date6, charts){
