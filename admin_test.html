@@ -2691,6 +2691,7 @@ function applyTblAlign(){
               <tbody id="dv-tbody"></tbody>
             </table>
           </div>
+          <div id="dv-comment" style="display:none;margin-top:12px;padding:10px 14px;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;font-size:18px;font-weight:700;color:#1a1a1a;white-space:pre-wrap;word-break:break-all;"><span style="color:#b45309;">코멘트:</span> <span id="dv-comment-text"></span></div>
         </div>
       </div>
     </div><!-- /dv-left-pane -->
@@ -3274,6 +3275,12 @@ async function dvLoad() {
 
       tbody.appendChild(tr);
     });
+
+    // 코멘트 (comment_d) — 값이 있는 행의 코멘트 표시
+    var cmtRow = drugs.find(function(d){ return d.comment_d; });
+    var cmtText = cmtRow ? String(cmtRow.comment_d).trim() : '';
+    document.getElementById('dv-comment-text').textContent = cmtText;
+    document.getElementById('dv-comment').style.display = cmtText ? 'block' : 'none';
 
     document.getElementById('dv-result').style.display = 'block';
     dvSetStatus('success', '✓ ' + drugs.length + '개 약물 조회 완료');
