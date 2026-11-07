@@ -1172,6 +1172,18 @@ async function sbInsert(t,d){var r=await fetch(SUPA_URL+'/rest/v1/'+t,{method:'P
 async function sbUpdate(t,m,d){var qs=Object.entries(m).map(function(e){return e[0]+'=eq.'+encodeURIComponent(e[1]);}).join('&');var r=await fetch(SUPA_URL+'/rest/v1/'+t+'?'+qs,{method:'PATCH',headers:sbH(),body:JSON.stringify(d)});if(!r.ok){var msg=await r.text();throw new Error('['+t+'] '+r.status+': '+msg);}return true;}
 async function sbDelete(t,m){var qs=Object.entries(m).map(function(e){return e[0]+'=eq.'+encodeURIComponent(e[1]);}).join('&');var r=await fetch(SUPA_URL+'/rest/v1/'+t+'?'+qs,{method:'DELETE',headers:sbH()});return r.status<300;}
 
+// drugs 저장: DB에 comment_p(출력 코멘트) 칸이 아직 없으면 그 칸만 빼고 다시 저장 (약물이 지워진 채로 남지 않도록)
+async function sbInsertDrugs(rows){
+  try{ return await sbInsert('drugs',rows); }
+  catch(e){
+    if(String(e.message||'').indexOf('comment_p')===-1) throw e;
+    var stripped=rows.map(function(r){var o=Object.assign({},r);delete o.comment_p;return o;});
+    await sbInsert('drugs',stripped);
+    alert('약물은 저장됐지만 출력 코멘트는 저장되지 않았습니다.\nSupabase에 comment_p 칸을 먼저 추가해야 합니다.');
+    return true;
+  }
+}
+
 // DB에서 약물코드 조회
 var _drugDbCache = null;
 async function getDrugDb(){
@@ -1309,7 +1321,7 @@ function renderCal(){
 }
 
 // ══ 진료 탭 ══════════════════════════════════════════
-var _currentChart=null,_patientDrugs=[],_drugsChanged=false,_currentDaeriList=[],_patientDrugComment='';
+var _currentChart=null,_patientDrugs=[],_drugsChanged=false,_currentDaeriList=[],_patientDrugComment='',_patientDrugPrintComment='';
 
 window.addEventListener('DOMContentLoaded',function(){
   checkKey();
@@ -1330,7 +1342,7 @@ function clearPatient(){
   document.getElementById('visitForm').classList.add('hidden');
   document.getElementById('searchStatus').classList.add('hidden');
   _currentChart=null;
-  _patientDrugComment='';
+  _patientDrugComment='';_patientDrugPrintComment='';
 }
 
 function toggleChartEdit(show){}
@@ -1431,6 +1443,9 @@ async function searchPatient(autoSaveDrugs){
     // 약물 코멘트 (comment_d) — 저장된 행 중 값이 있는 것을 사용
     var cmtRow=drugList.find(function(d){return d.comment_d;});
     _patientDrugComment=cmtRow?cmtRow.comment_d:'';
+    // 출력용 약물 코멘트 (comment_p) — 이미지/PDF/관리자 화면에 출력됨
+    var pcRow=drugList.find(function(d){return d.comment_p;});
+    _patientDrugPrintComment=pcRow?pcRow.comment_p:'';
     // 약물 updated_at → 날짜 뱃지 초기값
     var latestDrug = drugList.reduce(function(a,b){ return (a.updated_at||a.created_at||'') > (b.updated_at||b.created_at||'') ? a : b; }, {});
     var drugTs = latestDrug.updated_at || latestDrug.created_at || '';
@@ -1774,8 +1789,8 @@ async function saveDrugsOnly(){
   try{
     await sbDelete('drugs',{chart_no:_currentChart});
     if(_patientDrugs.length>0){
-      var rows=_patientDrugs.map(function(d){return{chart_no:_currentChart,drug_code:d.drug_code||'',drug_name:d.drug_name||'',dose:d.dose||'',daily_freq:d.daily_freq||'',days:d.days||'',method:d.method||'',comment_d:_patientDrugComment||''};});
-      await sbInsert('drugs',rows);
+      var rows=_patientDrugs.map(function(d){return{chart_no:_currentChart,drug_code:d.drug_code||'',drug_name:d.drug_name||'',dose:d.dose||'',daily_freq:d.daily_freq||'',days:d.days||'',method:d.method||'',comment_d:_patientDrugComment||'',comment_p:_patientDrugPrintComment||''};});
+      await sbInsertDrugs(rows);
     }
     _drugsChanged=false;
     // 저장날짜 기록 (날짜피커에서 변경 안 했으면 오늘로)
@@ -1862,8 +1877,8 @@ async function saveVisitAll(){
     if(_drugsChanged){
       await sbDelete('drugs',{chart_no:_currentChart});
       if(_patientDrugs.length>0){
-        var rows=_patientDrugs.map(function(d){return{chart_no:_currentChart,drug_code:d.drug_code||'',drug_name:d.drug_name||'',dose:d.dose||'',daily_freq:d.daily_freq||'',days:d.days||'',method:d.method||'',comment_d:_patientDrugComment||''};});
-        saves.push(sbInsert('drugs',rows));
+        var rows=_patientDrugs.map(function(d){return{chart_no:_currentChart,drug_code:d.drug_code||'',drug_name:d.drug_name||'',dose:d.dose||'',daily_freq:d.daily_freq||'',days:d.days||'',method:d.method||'',comment_d:_patientDrugComment||'',comment_p:_patientDrugPrintComment||''};});
+        saves.push(sbInsertDrugs(rows));
       }
     }
     await Promise.all(saves);
@@ -2010,17 +2025,20 @@ function renderPatientDrugs(){
   }
   html+='</tbody></table></div></div>';
 
-  // ── 코멘트 표시 (복용약물 출력영역 안) ──
-  var cmtShow=(_patientDrugComment||'').toString().trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // ── 출력 코멘트 (comment_p) — 복용약물 출력영역 안, 이미지/PDF/관리자 화면에 출력됨 ──
+  var pcVal=(_patientDrugPrintComment||'').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   html=html.replace(/<\/div><\/div>$/,'</div>'
-    +'<div id="drugCommentShow" style="'+(cmtShow?'':'display:none;')+'margin:8px 12px 4px;padding:7px 10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;font-size:13px;color:#222;white-space:pre-wrap;word-break:break-all;">'
-    +'<b style="color:#b45309;">코멘트:</b> <span id="drugCommentShowText">'+cmtShow+'</span></div>'
+    +'<div style="margin:8px 12px 4px;padding:6px 10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;display:flex;align-items:center;gap:8px;">'
+    +'<b style="color:#b45309;font-size:13px;white-space:nowrap;">코멘트:</b>'
+    +'<input id="drugPrintCommentInput" type="text" value="'+pcVal+'" placeholder="출력용 약물 코멘트 (이미지·PDF·관리자 화면에 표시)" oninput="onDrugPrintCommentChange(this.value)"'
+    +' style="flex:1;min-width:0;border:none;border-bottom:1px dashed #f0c36d;background:transparent;font-size:13px;color:#222;outline:none;padding:3px 2px;font-family:inherit;">'
+    +'</div>'
     +'</div>');
 
   // ── 코멘트 (comment_d) ──
   var cmtVal=(_patientDrugComment||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   html+='<div style="margin-top:10px;">'
-    +'<label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text2);">코멘트</label>'
+    +'<label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text2);">코멘트 <span style="font-weight:400;color:#999;">(내부용 · 출력 안 됨)</span></label>'
     +'<textarea id="drugCommentInput" placeholder="예: 26/7 스리반 추가" style="width:100%;min-height:48px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;" oninput="onDrugCommentChange(this.value)">'+cmtVal+'</textarea>'
     +'</div>';
 
@@ -2033,11 +2051,8 @@ function renderPatientDrugs(){
   el.innerHTML=html;
 }
 
-function onDrugCommentChange(v){
-  _patientDrugComment=v;_drugsChanged=true;
-  var box=document.getElementById('drugCommentShow'),t=document.getElementById('drugCommentShowText');
-  if(box&&t){var c=(v||'').toString().trim();t.textContent=c;box.style.display=c?'':'none';}
-}
+function onDrugCommentChange(v){_patientDrugComment=v;_drugsChanged=true;}
+function onDrugPrintCommentChange(v){_patientDrugPrintComment=v;_drugsChanged=true;}
 
 // ── 약물검색 → 선택하면 복용약물 표에 행 추가 ──
 var _drugSearchMatches=[],_drugSearchSel=0;
@@ -2062,11 +2077,17 @@ function renderDrugSearchBox(){
   if(!_drugSearchMatches.length){box.innerHTML='<div style="padding:10px 14px;font-size:12px;color:#aaa;">검색 결과 없음</div>';box.style.display='block';return;}
   function esc(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
   box.innerHTML=_drugSearchMatches.map(function(m,i){
-    return '<div onmousedown="event.preventDefault();pickDrugSearch('+i+')" onmouseover="_drugSearchSel='+i+';renderDrugSearchBox()" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;'+(i===_drugSearchSel?'background:#eef3fe;':'')+'">'
+    return '<div data-sidx="'+i+'" onmousedown="event.preventDefault();pickDrugSearch('+i+')" onmouseenter="hoverDrugSearch('+i+')" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;'+(i===_drugSearchSel?'background:#eef3fe;':'')+'">'
       +'<span style="font-family:monospace;color:#4f8ef7;min-width:70px;">'+esc(m.code)+'</span><span style="color:#444;">'+esc(m.name)+'</span></div>';
   }).join('');
   box.style.display='block';
   var cur=box.children[_drugSearchSel];if(cur&&cur.scrollIntoView)cur.scrollIntoView({block:'nearest'});
+}
+// 마우스 올림: 목록을 다시 그리지 않고 강조만 바꿈 (다시 그리면 클릭이 안 먹힘)
+function hoverDrugSearch(i){
+  _drugSearchSel=i;
+  var box=document.getElementById('drugSearchBox');if(!box)return;
+  Array.prototype.forEach.call(box.children,function(c,k){c.style.background=(k===i)?'#eef3fe':'';});
 }
 function drugSearchKey(e){
   var box=document.getElementById('drugSearchBox');
@@ -2245,21 +2266,27 @@ async function saveDrugs(){
   var btn=document.querySelector('#resultCard .btn-success');btn.disabled=true;btn.textContent='저장 중...';
   try{
     // 기존 코멘트(comment_d) 보존 — 교체 저장 시 사라지지 않도록 미리 백업
-    var existingComment='';
+    var existingComment='',existingPrint='';
     try{
       var existRows=await sbGet('drugs',{chart_no:'eq.'+cn,select:'comment_d'});
       if(Array.isArray(existRows)){
         var cmtRow=existRows.find(function(r){return r.comment_d;});
         if(cmtRow) existingComment=cmtRow.comment_d;
       }
+      var existP=await sbGet('drugs',{chart_no:'eq.'+cn,select:'comment_p'});
+      if(Array.isArray(existP)){
+        var pRow=existP.find(function(r){return r.comment_p;});
+        if(pRow) existingPrint=pRow.comment_p;
+      }
     }catch(e){}
     if(_replaceMode)await sbDelete('drugs',{chart_no:cn});
     var rows=drugs.map(function(d,idx){
       var row={chart_no:cn,drug_code:d.drug_code,drug_name:d.drug_name,dose:d.dose,daily_freq:d.daily_freq,days:d.days,method:d.method};
       if(idx===0 && existingComment) row.comment_d=existingComment;
+      if(idx===0 && existingPrint) row.comment_p=existingPrint;
       return row;
     });
-    await sbInsert('drugs',rows);
+    await sbInsertDrugs(rows);
     _replaceMode=false;_replaceChart=null;
     setStatus('drugSaveStatus','success','✓ '+drugs.length+'개 저장됨'+(existingComment?' (코멘트 유지됨)':''));
   }catch(err){setStatus('drugSaveStatus','error','실패: '+err.message);}
@@ -5742,7 +5769,7 @@ function buildDrugCaptureDom() {
   wrap.appendChild(tbl);
 
   // 코멘트
-  var cmt = (_patientDrugComment || '').toString().trim();
+  var cmt = (_patientDrugPrintComment || '').toString().trim();
   if (cmt) {
     var cbox = document.createElement('div');
     cbox.style.cssText = 'margin-top:14px;padding:10px 14px;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;font-size:13px;color:#222;white-space:pre-wrap;word-break:break-all;line-height:1.5;';

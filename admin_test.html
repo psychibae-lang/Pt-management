@@ -3276,9 +3276,9 @@ async function dvLoad() {
       tbody.appendChild(tr);
     });
 
-    // 코멘트 (comment_d) — 값이 있는 행의 코멘트 표시
-    var cmtRow = drugs.find(function(d){ return d.comment_d; });
-    var cmtText = cmtRow ? String(cmtRow.comment_d).trim() : '';
+    // 출력 코멘트 (comment_p) 표시 — 내부용 코멘트(comment_d)는 표시하지 않음
+    var cmtRow = drugs.find(function(d){ return d.comment_p; });
+    var cmtText = cmtRow ? String(cmtRow.comment_p).trim() : '';
     document.getElementById('dv-comment-text').textContent = cmtText;
     document.getElementById('dv-comment').style.display = cmtText ? 'block' : 'none';
 
