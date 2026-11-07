@@ -1994,9 +1994,10 @@ function renderPatientDrugs(){
     html+='<tr><td colspan="8" style="padding:12px;color:#aaa;text-align:center;">약물 정보 없음 — 위 + 버튼으로 추가하세요</td></tr>';
   } else {
     _patientDrugs.forEach(function(d,i){
-      html+='<tr>';
-      // 순서변경 버튼
+      html+='<tr data-drow="'+i+'" ondragstart="drugDragStart(event,'+i+')" ondragover="drugDragOver(event,'+i+')" ondragleave="drugDragLeave(event)" ondrop="drugDrop(event,'+i+')" ondragend="drugDragEnd(event)">';
+      // 순서변경: 드래그 손잡이 + 버튼
       html+='<td style="'+ts+';white-space:nowrap;padding:3px 4px;">'
+        +'<span onmousedown="this.closest(\'tr\').draggable=true" onmouseup="this.closest(\'tr\').draggable=false" title="드래그해서 순서 이동" style="cursor:grab;color:#9aa5b8;font-size:15px;padding:0 5px 0 2px;user-select:none;vertical-align:middle;">⠿</span>'
         +'<button onclick="moveDrug('+i+',-1)" style="background:none;border:1px solid #ddd;border-radius:4px;color:#888;cursor:pointer;font-size:11px;padding:1px 5px;line-height:1;" title="위로">▲</button>'
         +'<button onclick="moveDrug('+i+',1)" style="background:none;border:1px solid #ddd;border-radius:4px;color:#888;cursor:pointer;font-size:11px;padding:1px 5px;line-height:1;margin-left:2px;" title="아래로">▼</button>'
         +'</td>';
@@ -2104,6 +2105,40 @@ function pickDrugSearch(i){
   renderPatientDrugs();
   if(typeof showToast==='function')showToast('➕ '+m.name+' 추가됨');
   var inp=document.getElementById('drugSearchInput');if(inp)inp.focus();
+}
+
+// ── 드래그로 약물 순서 이동 (⠿ 손잡이를 잡고 끌기) ──
+var _drugDragFrom=-1;
+function drugDragStart(e,i){
+  _drugDragFrom=i;
+  try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(i));}catch(x){}
+  e.currentTarget.style.opacity='0.4';
+}
+function drugDragOver(e,i){
+  if(_drugDragFrom<0)return;
+  e.preventDefault();
+  try{e.dataTransfer.dropEffect='move';}catch(x){}
+  var tr=e.currentTarget,r=tr.getBoundingClientRect(),below=(e.clientY-r.top)>r.height/2;
+  tr.style.boxShadow=below?'inset 0 -3px 0 #4f8ef7':'inset 0 3px 0 #4f8ef7';
+  tr.dataset.below=below?'1':'';
+}
+function drugDragLeave(e){e.currentTarget.style.boxShadow='';}
+function drugDrop(e,i){
+  e.preventDefault();
+  var from=_drugDragFrom;_drugDragFrom=-1;
+  if(from<0)return;
+  var to=i+(e.currentTarget.dataset.below?1:0);
+  if(from<to)to--;
+  if(to===from){renderPatientDrugs();return;}
+  var item=_patientDrugs.splice(from,1)[0];
+  _patientDrugs.splice(to,0,item);
+  _drugsChanged=true;
+  renderPatientDrugs();
+}
+function drugDragEnd(e){
+  _drugDragFrom=-1;
+  var tr=e.currentTarget;tr.draggable=false;tr.style.opacity='';
+  document.querySelectorAll('#piDrugArea tr[data-drow]').forEach(function(t){t.style.boxShadow='';});
 }
 
 function moveDrug(i, dir) {
