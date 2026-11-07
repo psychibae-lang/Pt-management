@@ -1956,6 +1956,13 @@ function renderPatientDrugs(){
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:10px 12px 0;">'
     +'<div><div style="font-size:10px;color:#888;font-weight:700;letter-spacing:0.08em;">한강의원 복용약물</div>'
     +'<div style="font-size:15px;font-weight:800;color:#1a3a5c;">챠트 <span style="font-family:monospace;color:var(--accent);">'+(_currentChart||'')+'</span></div></div>'
+    // 약물검색 (코드/이름) → 선택 시 아래 표에 행 추가
+    +'<div style="flex:1;max-width:340px;margin:0 14px;position:relative;">'
+    +'<input id="drugSearchInput" type="text" placeholder="🔍 약물검색 (코드 또는 약물명)" autocomplete="off"'
+    +' style="width:100%;box-sizing:border-box;padding:7px 12px;border:1.5px solid #4f8ef7;border-radius:8px;font-size:13px;outline:none;background:#fff;"'
+    +' oninput="drugSearchInputChange(this)" onkeydown="drugSearchKey(event)" onblur="hideDrugSearch()" onfocus="drugSearchInputChange(this)">'
+    +'<div id="drugSearchBox" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:1000;margin-top:3px;background:#fff;border:1px solid #ddd;border-radius:8px;max-height:280px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,0.15);"></div>'
+    +'</div>'
     +'<div style="text-align:right;"><div style="font-size:10px;color:#888;">저장날짜</div>'
     +'<div style="font-size:12px;font-weight:700;color:var(--accent);">'+savedDisp+'</div></div></div>'
     +'<div style="overflow-x:auto;padding:0 0 4px;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr>';
@@ -2003,6 +2010,13 @@ function renderPatientDrugs(){
   }
   html+='</tbody></table></div></div>';
 
+  // ── 코멘트 표시 (복용약물 출력영역 안) ──
+  var cmtShow=(_patientDrugComment||'').toString().trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  html=html.replace(/<\/div><\/div>$/,'</div>'
+    +'<div id="drugCommentShow" style="'+(cmtShow?'':'display:none;')+'margin:8px 12px 4px;padding:7px 10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;font-size:13px;color:#222;white-space:pre-wrap;word-break:break-all;">'
+    +'<b style="color:#b45309;">코멘트:</b> <span id="drugCommentShowText">'+cmtShow+'</span></div>'
+    +'</div>');
+
   // ── 코멘트 (comment_d) ──
   var cmtVal=(_patientDrugComment||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   html+='<div style="margin-top:10px;">'
@@ -2019,7 +2033,57 @@ function renderPatientDrugs(){
   el.innerHTML=html;
 }
 
-function onDrugCommentChange(v){_patientDrugComment=v;_drugsChanged=true;}
+function onDrugCommentChange(v){
+  _patientDrugComment=v;_drugsChanged=true;
+  var box=document.getElementById('drugCommentShow'),t=document.getElementById('drugCommentShowText');
+  if(box&&t){var c=(v||'').toString().trim();t.textContent=c;box.style.display=c?'':'none';}
+}
+
+// ── 약물검색 → 선택하면 복용약물 표에 행 추가 ──
+var _drugSearchMatches=[],_drugSearchSel=0;
+async function drugSearchInputChange(input){
+  var q=(input.value||'').toLowerCase().trim(),box=document.getElementById('drugSearchBox');
+  if(!box)return;
+  if(!q){box.style.display='none';_drugSearchMatches=[];return;}
+  var db=await getDrugDb();
+  if((input.value||'').toLowerCase().trim()!==q)return; // 입력이 바뀌었으면 무시
+  var starts=[],contains=[];
+  Object.keys(db).forEach(function(code){
+    var name=(db[code]||'').toString(),lc=code.toLowerCase(),ln=name.toLowerCase();
+    if(lc.indexOf(q)===0||ln.indexOf(q)===0)starts.push({code:code,name:name});
+    else if(lc.indexOf(q)!==-1||ln.indexOf(q)!==-1)contains.push({code:code,name:name});
+  });
+  _drugSearchMatches=starts.concat(contains).slice(0,20);
+  _drugSearchSel=0;
+  renderDrugSearchBox();
+}
+function renderDrugSearchBox(){
+  var box=document.getElementById('drugSearchBox');if(!box)return;
+  if(!_drugSearchMatches.length){box.innerHTML='<div style="padding:10px 14px;font-size:12px;color:#aaa;">검색 결과 없음</div>';box.style.display='block';return;}
+  function esc(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  box.innerHTML=_drugSearchMatches.map(function(m,i){
+    return '<div onmousedown="event.preventDefault();pickDrugSearch('+i+')" onmouseover="_drugSearchSel='+i+';renderDrugSearchBox()" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;'+(i===_drugSearchSel?'background:#eef3fe;':'')+'">'
+      +'<span style="font-family:monospace;color:#4f8ef7;min-width:70px;">'+esc(m.code)+'</span><span style="color:#444;">'+esc(m.name)+'</span></div>';
+  }).join('');
+  box.style.display='block';
+  var cur=box.children[_drugSearchSel];if(cur&&cur.scrollIntoView)cur.scrollIntoView({block:'nearest'});
+}
+function drugSearchKey(e){
+  var box=document.getElementById('drugSearchBox');
+  if(e.key==='ArrowDown'){if(_drugSearchMatches.length){_drugSearchSel=(_drugSearchSel+1)%_drugSearchMatches.length;renderDrugSearchBox();}e.preventDefault();}
+  else if(e.key==='ArrowUp'){if(_drugSearchMatches.length){_drugSearchSel=(_drugSearchSel-1+_drugSearchMatches.length)%_drugSearchMatches.length;renderDrugSearchBox();}e.preventDefault();}
+  else if(e.key==='Enter'){if(_drugSearchMatches.length)pickDrugSearch(_drugSearchSel);e.preventDefault();}
+  else if(e.key==='Escape'){if(box)box.style.display='none';}
+}
+function hideDrugSearch(){setTimeout(function(){var b=document.getElementById('drugSearchBox');if(b)b.style.display='none';},150);}
+function pickDrugSearch(i){
+  var m=_drugSearchMatches[i];if(!m)return;
+  _patientDrugs.push({drug_code:m.code,drug_name:m.name,dose:'1',daily_freq:'1',days:'28',method:'b4'});
+  _drugsChanged=true;_drugSearchMatches=[];
+  renderPatientDrugs();
+  if(typeof showToast==='function')showToast('➕ '+m.name+' 추가됨');
+  var inp=document.getElementById('drugSearchInput');if(inp)inp.focus();
+}
 
 function moveDrug(i, dir) {
   var j = i + dir;
@@ -5676,6 +5740,19 @@ function buildDrugCaptureDom() {
   }
   tbl.appendChild(tbody);
   wrap.appendChild(tbl);
+
+  // 코멘트
+  var cmt = (_patientDrugComment || '').toString().trim();
+  if (cmt) {
+    var cbox = document.createElement('div');
+    cbox.style.cssText = 'margin-top:14px;padding:10px 14px;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;font-size:13px;color:#222;white-space:pre-wrap;word-break:break-all;line-height:1.5;';
+    var cl = document.createElement('b');
+    cl.textContent = '코멘트: ';
+    cl.style.color = '#b45309';
+    cbox.appendChild(cl);
+    cbox.appendChild(document.createTextNode(cmt));
+    wrap.appendChild(cbox);
+  }
 
   // 푸터
   var ftr = document.createElement('div');
