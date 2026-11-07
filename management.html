@@ -2077,11 +2077,17 @@ function renderDrugSearchBox(){
   if(!_drugSearchMatches.length){box.innerHTML='<div style="padding:10px 14px;font-size:12px;color:#aaa;">검색 결과 없음</div>';box.style.display='block';return;}
   function esc(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
   box.innerHTML=_drugSearchMatches.map(function(m,i){
-    return '<div onmousedown="event.preventDefault();pickDrugSearch('+i+')" onmouseover="_drugSearchSel='+i+';renderDrugSearchBox()" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;'+(i===_drugSearchSel?'background:#eef3fe;':'')+'">'
+    return '<div data-sidx="'+i+'" onmousedown="event.preventDefault();pickDrugSearch('+i+')" onmouseenter="hoverDrugSearch('+i+')" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;'+(i===_drugSearchSel?'background:#eef3fe;':'')+'">'
       +'<span style="font-family:monospace;color:#4f8ef7;min-width:70px;">'+esc(m.code)+'</span><span style="color:#444;">'+esc(m.name)+'</span></div>';
   }).join('');
   box.style.display='block';
   var cur=box.children[_drugSearchSel];if(cur&&cur.scrollIntoView)cur.scrollIntoView({block:'nearest'});
+}
+// 마우스 올림: 목록을 다시 그리지 않고 강조만 바꿈 (다시 그리면 클릭이 안 먹힘)
+function hoverDrugSearch(i){
+  _drugSearchSel=i;
+  var box=document.getElementById('drugSearchBox');if(!box)return;
+  Array.prototype.forEach.call(box.children,function(c,k){c.style.background=(k===i)?'#eef3fe':'';});
 }
 function drugSearchKey(e){
   var box=document.getElementById('drugSearchBox');
