@@ -555,7 +555,12 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
         <button onclick="saveNextVisitQuick()" class="btn btn-success" style="font-size:12px;padding:7px 14px;">저장</button>
         <button onclick="document.getElementById('pcNextVisitEditPanel').classList.add('hidden')" class="btn btn-outline" style="font-size:11px;padding:7px 10px;">닫기</button>
       </div>
-      <div id="pcNextVisitHint" style="font-size:11px;color:var(--text2);margin-top:5px;">숫자 입력: 30 → 진료일+30일 · 261212 → 26년 12월 12일 (📅 달력도 가능)</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:7px;">
+        <span style="font-size:11px;font-weight:700;color:var(--text2);">숫자 입력 기준</span>
+        <button type="button" id="nvBaseToday" onclick="setNextVisitBase('today')" class="btn btn-outline" style="font-size:11px;padding:5px 10px;">오늘(진료일)</button>
+        <button type="button" id="nvBaseNext" onclick="setNextVisitBase('next')" class="btn btn-outline" style="font-size:11px;padding:5px 10px;">기존 다음내원일</button>
+      </div>
+      <div id="pcNextVisitHint" style="font-size:11px;color:var(--text2);margin-top:5px;">숫자 입력: 30 → 기준일+30일 · 261212 → 26년 12월 12일 (📅 달력도 가능)</div>
     </div>
 
     <!-- 선택의료 퀵에딧 패널 -->
@@ -1460,11 +1465,7 @@ async function searchPatient(autoSaveDrugs){
 
     document.getElementById('pcChart').textContent=chartNo;
     var isNew=!patient&&!visit;
-    // 약물 정보 없으면 신환/구환 무관하게 5칸 자동 삽입
-    if(_patientDrugs.length===0){
-      for(var ni=0;ni<5;ni++) _patientDrugs.push({drug_code:'',drug_name:'',dose:'1',daily_freq:'1',days:'21',method:'b4'});
-      _drugsChanged=true;
-    }
+    // 약물 정보가 없어도 빈 칸을 자동으로 만들지 않음 (약물 검색 또는 + 버튼으로 추가)
     document.getElementById('pcTag').innerHTML=isNew?'<span class="tag-new">신환</span>':'<span class="tag-exist">기존</span>';
     // 신환만 챠트번호 변경 버튼 표시
     var btnChartEdit=document.getElementById('btnChartEdit');
@@ -1554,15 +1555,44 @@ function openNextVisitQuickEdit(){
   var hidden=document.getElementById('pNextVisitDate');
   var input=document.getElementById('pcNextVisitInput');
   if(input) input.value=hidden?hidden.value:'';
+  _nvExisting=(hidden&&/^\d{6}$/.test(hidden.value.trim()))?hidden.value.trim():'';
+  _nvBaseMode='today';
+  _renderNextVisitBaseBtns();
   panel.classList.remove('hidden');
   previewNextVisitQuick();
   if(input){input.focus();input.select();}
 }
 
-// 다음내원일 숫자 입력 해석: 1~3자리 = 진료일(저장될 visit_date)+N일, 6자리 = YYMMDD
-function _nvBaseDate6(){
+// 다음내원일 숫자 입력 해석: 1~3자리 = 기준일+N일, 6자리 = YYMMDD
+// 기준일: 'today' = 진료일(저장될 visit_date, 기본 오늘) / 'next' = 패널을 열 때의 기존 다음내원일 (진료일 이후인 경우만)
+var _nvBaseMode='today',_nvExisting='';
+function _nvVisitDate6(){
   var el=document.getElementById('pVisitDate');
   return (el&&/^\d{6}$/.test(el.value.trim()))?el.value.trim():today6();
+}
+function _nvNextUsable(){return !!_nvExisting&&_nvExisting>=_nvVisitDate6();}
+function _nvBaseDate6(){return (_nvBaseMode==='next'&&_nvNextUsable())?_nvExisting:_nvVisitDate6();}
+function _renderNextVisitBaseBtns(){
+  var bt=document.getElementById('nvBaseToday'),bn=document.getElementById('nvBaseNext');
+  if(!bt||!bn)return;
+  var usable=_nvNextUsable();
+  if(!usable&&_nvBaseMode==='next')_nvBaseMode='today';
+  bt.textContent='오늘(진료일) '+displayDate(_nvVisitDate6());
+  bn.textContent=_nvExisting?('기존 다음내원일 '+displayDate(_nvExisting)+(usable?'':' · 지남')):'기존 다음내원일 없음';
+  bn.disabled=!usable;bn.style.opacity=usable?'':'0.45';bn.style.cursor=usable?'':'not-allowed';
+  [[bt,_nvBaseMode==='today'],[bn,_nvBaseMode==='next']].forEach(function(x){
+    x[0].style.background=x[1]?'var(--accent)':'#fff';
+    x[0].style.color=x[1]?'#fff':'';
+    x[0].style.borderColor=x[1]?'var(--accent)':'';
+  });
+}
+function setNextVisitBase(mode){
+  if(mode==='next'&&!_nvNextUsable())return;
+  _nvBaseMode=mode;
+  _renderNextVisitBaseBtns();
+  previewNextVisitQuick();
+  var input=document.getElementById('pcNextVisitInput');
+  if(input)input.focus();
 }
 function parseNextVisitInput(raw){
   var s=String(raw||'').replace(/\s/g,'');
@@ -1586,7 +1616,7 @@ function previewNextVisitQuick(){
   var input=document.getElementById('pcNextVisitInput');
   if(!hint||!input)return;
   var r=parseNextVisitInput(input.value);
-  var def='숫자 입력: 30 → 진료일+30일 · 261212 → 26년 12월 12일 (📅 달력도 가능)';
+  var def='숫자 입력: 30 → 기준일+30일 · 261212 → 26년 12월 12일 (📅 달력도 가능)';
   if(!input.value.trim()){hint.style.color='var(--text2)';hint.textContent=def;return;}
   if(!r.ok){
     // 4~5자리는 입력 중일 수 있으므로 회색 안내만
@@ -1596,7 +1626,7 @@ function previewNextVisitQuick(){
   }
   hint.style.color='var(--accent)';
   hint.textContent=r.days!=null
-    ? '→ '+displayDate(r.val)+' (진료일 '+displayDate(r.base)+' + '+r.days+'일) · 저장을 누르세요'
+    ? '→ '+displayDate(r.val)+' ('+(_nvBaseDate6()===_nvVisitDate6()?'진료일 ':'기존 다음내원일 ')+displayDate(r.base)+' + '+r.days+'일) · 저장을 누르세요'
     : '→ '+displayDate(r.val)+' · 저장을 누르세요';
 }
 
