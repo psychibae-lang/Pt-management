@@ -22,6 +22,7 @@
     --cal-fs-dow: 14px;
     --cal-fs-hd: 18px;
     --cal-hd-py: 7px;
+    --cal-sx: 1;
   }
   .cal-box {
     width:235px; height:620px; min-width:200px; min-height:280px;
@@ -56,10 +57,12 @@
     font-weight:900; font-size:var(--cal-fs-hd); padding:var(--cal-hd-py) 0; line-height:1.2; border-radius:7px; margin-bottom:6px;
   }
   .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; text-align:center; }
-  .cal-dow { font-size:var(--cal-fs-dow); line-height:1.2; font-weight:800; color:#888; padding:3px 0 var(--cal-dow-pb); }
+  .cal-dow { font-size:var(--cal-fs-dow); line-height:1.15; font-weight:800; color:#888; padding:3px 0 var(--cal-dow-pb); }
   .cal-dow.sun { color:#ef4444; }
   .cal-dow.sat { color:#3b82f6; }
-  .cal-day { font-size:var(--cal-fs-day); line-height:1.2; white-space:nowrap; letter-spacing:-0.04em; font-weight:800; padding:var(--cal-pad-y) 0; border-radius:5px; color:#222; }
+  .cal-day { font-size:var(--cal-fs-day); line-height:1.1; white-space:nowrap; letter-spacing:-0.04em; font-weight:800; padding:var(--cal-pad-y) 0; border-radius:5px; color:#222; }
+  /* 글자를 가로로만 늘림 (세로 높이는 그대로) */
+  .cal-day > span, .cal-dow > span { display:inline-block; transform:scaleX(var(--cal-sx)); transform-origin:center; }
   .cal-day.other { color:#dcdcdc; }
   .cal-day.sun { color:#ef4444; }
   .cal-day.holiday { color:#ef4444; font-weight:900; }
@@ -140,7 +143,7 @@ function calBuildMonth(y, mZero) {
 
   var cells = '';
   for (var i=0; i<startDow; i++) {
-    cells += '<div class="cal-day other">' + (daysInPrevMonth - startDow + 1 + i) + '</div>';
+    cells += '<div class="cal-day other"><span>' + (daysInPrevMonth - startDow + 1 + i) + '</span></div>';
   }
   for (var d=1; d<=daysInMonth; d++) {
     var dow = new Date(y, mZero, d).getDay();
@@ -150,16 +153,16 @@ function calBuildMonth(y, mZero) {
     if (hName) cls += ' holiday';
     if (isCurMonth && d===todayDate) cls += ' today';
     var title = hName ? (' title="' + hName + '"') : '';
-    cells += '<div class="' + cls + '"' + title + '>' + d + '</div>';
+    cells += '<div class="' + cls + '"' + title + '><span>' + d + '</span></div>';
   }
   var totalCells = startDow + daysInMonth;
   var trailing = (7 - (totalCells % 7)) % 7;
   for (var j=1; j<=trailing; j++) {
-    cells += '<div class="cal-day other">' + j + '</div>';
+    cells += '<div class="cal-day other"><span>' + j + '</span></div>';
   }
   var dowLabels = ['일','월','화','수','목','금','토'];
   var dowHtml = dowLabels.map(function(l, i) {
-    return '<div class="cal-dow' + (i===0?' sun':(i===6?' sat':'')) + '">' + l + '</div>';
+    return '<div class="cal-dow' + (i===0?' sun':(i===6?' sat':'')) + '"><span>' + l + '</span></div>';
   }).join('');
   return '<div class="cal-month">' +
     '<div class="cal-month-hd">' + y + '년 ' + (mZero+1) + '월</div>' +
@@ -195,11 +198,15 @@ var CAL_DOWPB_MAX = 4, CAL_DOWPB_MIN = 1;
 
 // 글자 크기: 박스 가로(칸 너비)와 세로(5개월이 다 들어가는 높이) 안에서 가능한 가장 크게.
 // 박스 크기는 그대로 두고 글자·여백만 함께 비례 조절.
-// 기본 글자(날짜)는 23px(칸 너비가 허락하는 한), 세로 공간이 남으면 그보다 더 키움.
-var CAL_FS_BASE = 23, CAL_FS_FLOOR = 16, CAL_FS_MAX = 64, CAL_W_RATIO = 0.74;
+// 기본 글자(날짜)는 25px(칸 너비가 허락하는 한), 세로 공간이 남으면 그보다 더 키움.
+var CAL_FS_BASE = 25, CAL_FS_FLOOR = 16, CAL_FS_MAX = 64, CAL_W_RATIO = 0.74;
 
+var calCellW = 30;
 function calApplySize(f) {
   var root = document.documentElement.style;
+  // 남는 칸 너비만큼 글자를 가로로 늘림 (두 자리 숫자가 칸의 약 78%를 차지할 때까지, 최대 1.5배)
+  var sx = Math.max(1, Math.min(1.5, (calCellW * 0.78) / (f * 1.15)));
+  root.setProperty('--cal-sx', sx);
   root.setProperty('--cal-fs-day', f + 'px');
   root.setProperty('--cal-fs-dow', (f * 0.74) + 'px');
   root.setProperty('--cal-fs-hd', (f * 0.95) + 'px');
@@ -222,6 +229,7 @@ function calFitHeight() {
 
   // 가로 제한: 한 칸 너비 안에 두 자리 숫자가 들어가야 함
   var cellW = (elMonths.clientWidth - 6) / 7;
+  calCellW = cellW;
   var hi = Math.min(CAL_FS_MAX, cellW * CAL_W_RATIO);
   var lo = Math.max(CAL_FS_FLOOR, Math.min(hi, CAL_FS_BASE));
   if (hi <= lo) { calApplySize(lo); return; }
