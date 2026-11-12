@@ -18,13 +18,17 @@
     --cal-pad-y: 4px;
     --cal-month-mb: 10px;
     --cal-dow-pb: 4px;
+    --cal-fs-day: 19px;
+    --cal-fs-dow: 14px;
+    --cal-fs-hd: 18px;
+    --cal-hd-py: 7px;
   }
   .cal-box {
     width:235px; height:620px; min-width:200px; min-height:280px;
     max-width:none;
     position:relative; overflow:auto;
     border:1px solid #e4e8f0; border-radius:12px; background:#fff;
-    padding:12px 12px 8px 12px;
+    padding:12px 6px 8px 6px;
     box-shadow:0 2px 10px rgba(0,0,0,0.05);
   }
   .cal-resize-handle {
@@ -36,7 +40,7 @@
     border-radius:0 0 10px 0;
     z-index:5;
   }
-  .cal-nav { display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:10px; }
+  .cal-nav { padding:0 6px; display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:10px; }
   .cal-nav button {
     border:1px solid #ddd; background:#fff; border-radius:7px; padding:5px 11px;
     font-size:13px; font-weight:700; color:#666; cursor:pointer; flex-shrink:0;
@@ -46,15 +50,16 @@
   .cal-nav-label { font-size:14px; color:#888; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   .cal-month { margin-bottom:var(--cal-month-mb); }
+  .cal-month:last-child { margin-bottom:0; }
   .cal-month-hd {
     background:linear-gradient(135deg,#7c3aed,#6d28d9); color:#fff; text-align:center;
-    font-weight:900; font-size:18px; padding:7px 0; border-radius:7px; margin-bottom:6px;
+    font-weight:900; font-size:var(--cal-fs-hd); padding:var(--cal-hd-py) 0; line-height:1.2; border-radius:7px; margin-bottom:6px;
   }
   .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; text-align:center; }
-  .cal-dow { font-size:14px; font-weight:800; color:#888; padding:3px 0 var(--cal-dow-pb); }
+  .cal-dow { font-size:var(--cal-fs-dow); line-height:1.2; font-weight:800; color:#888; padding:3px 0 var(--cal-dow-pb); }
   .cal-dow.sun { color:#ef4444; }
   .cal-dow.sat { color:#3b82f6; }
-  .cal-day { font-size:19px; font-weight:800; padding:var(--cal-pad-y) 0; border-radius:5px; color:#222; }
+  .cal-day { font-size:var(--cal-fs-day); line-height:1.2; white-space:nowrap; letter-spacing:-0.04em; font-weight:800; padding:var(--cal-pad-y) 0; border-radius:5px; color:#222; }
   .cal-day.other { color:#dcdcdc; }
   .cal-day.sun { color:#ef4444; }
   .cal-day.holiday { color:#ef4444; font-weight:900; }
@@ -83,31 +88,33 @@
 // 한국 공휴일 데이터 (정확도가 중요한 2025~2027년은 실제 날짜로 지정, 그 외 연도는 고정 국경일만 표시)
 var KR_HOLIDAYS = {
   // 2025
-  '2025-01-01':'신정', '2025-01-28':'설날 연휴', '2025-01-29':'설날', '2025-01-30':'설날 연휴',
+  '2025-01-01':'신정', '2025-01-27':'임시공휴일', '2025-01-28':'설날 연휴', '2025-01-29':'설날', '2025-01-30':'설날 연휴',
   '2025-03-01':'삼일절', '2025-03-03':'대체공휴일',
   '2025-05-05':'어린이날·부처님오신날', '2025-05-06':'대체공휴일',
-  '2025-06-06':'현충일', '2025-08-15':'광복절',
+  '2025-06-03':'대통령선거일', '2025-06-06':'현충일', '2025-08-15':'광복절',
   '2025-10-03':'개천절', '2025-10-05':'추석 연휴', '2025-10-06':'추석', '2025-10-07':'추석 연휴',
   '2025-10-08':'대체공휴일', '2025-10-09':'한글날', '2025-12-25':'성탄절',
   // 2026
   '2026-01-01':'신정', '2026-02-16':'설날 연휴', '2026-02-17':'설날', '2026-02-18':'설날 연휴',
   '2026-03-01':'삼일절', '2026-03-02':'대체공휴일',
-  '2026-05-05':'어린이날', '2026-05-24':'부처님오신날', '2026-05-25':'대체공휴일',
-  '2026-06-06':'현충일', '2026-07-17':'제헌절', '2026-08-15':'광복절', '2026-08-17':'대체공휴일',
+  '2026-05-01':'노동절', '2026-05-05':'어린이날', '2026-05-24':'부처님오신날', '2026-05-25':'대체공휴일',
+  '2026-06-03':'지방선거일', '2026-06-06':'현충일', '2026-07-17':'제헌절', '2026-08-15':'광복절', '2026-08-17':'대체공휴일',
   '2026-09-24':'추석 연휴', '2026-09-25':'추석', '2026-09-26':'추석 연휴',
   '2026-10-03':'개천절', '2026-10-05':'대체공휴일', '2026-10-09':'한글날', '2026-12-25':'성탄절',
   // 2027
-  '2027-01-01':'신정', '2027-02-07':'설날 연휴', '2027-02-08':'설날', '2027-02-09':'설날 연휴',
-  '2027-03-01':'삼일절', '2027-05-05':'어린이날', '2027-05-13':'부처님오신날',
-  '2027-06-06':'현충일', '2027-06-07':'대체공휴일',
+  '2027-01-01':'신정', '2027-02-06':'설날 연휴', '2027-02-07':'설날', '2027-02-08':'설날 연휴',
+  '2027-02-09':'대체공휴일',
+  '2027-03-01':'삼일절', '2027-05-01':'노동절', '2027-05-03':'대체공휴일',
+  '2027-05-05':'어린이날', '2027-05-13':'부처님오신날',
+  '2027-06-06':'현충일',
   '2027-07-17':'제헌절', '2027-07-19':'대체공휴일',
   '2027-08-15':'광복절', '2027-08-16':'대체공휴일',
   '2027-09-14':'추석 연휴', '2027-09-15':'추석', '2027-09-16':'추석 연휴',
-  '2027-10-03':'개천절', '2027-10-04':'대체공휴일', '2027-10-09':'한글날',
+  '2027-10-03':'개천절', '2027-10-04':'대체공휴일', '2027-10-09':'한글날', '2027-10-11':'대체공휴일',
   '2027-12-25':'성탄절', '2027-12-27':'대체공휴일'
 };
 var KR_FIXED_HOLIDAY_NAMES = {
-  '1-1':'신정', '3-1':'삼일절', '5-5':'어린이날', '6-6':'현충일',
+  '1-1':'신정', '3-1':'삼일절', '5-1':'노동절', '5-5':'어린이날', '6-6':'현충일',
   '7-17':'제헌절', '8-15':'광복절', '10-3':'개천절', '10-9':'한글날', '12-25':'성탄절'
 };
 function calHolidayName(y, mZero, d) {
@@ -186,32 +193,47 @@ var CAL_PAD_MAX = 4, CAL_PAD_MIN = 0;
 var CAL_MB_MAX = 10, CAL_MB_MIN = 2;
 var CAL_DOWPB_MAX = 4, CAL_DOWPB_MIN = 1;
 
+// 글자 크기: 박스 가로(칸 너비)와 세로(5개월이 다 들어가는 높이) 안에서 가능한 가장 크게.
+// 박스 크기는 그대로 두고 글자·여백만 함께 비례 조절.
+// 기본 글자(날짜)는 23px(칸 너비가 허락하는 한), 세로 공간이 남으면 그보다 더 키움.
+var CAL_FS_BASE = 23, CAL_FS_FLOOR = 16, CAL_FS_MAX = 64, CAL_W_RATIO = 0.74;
+
+function calApplySize(f) {
+  var root = document.documentElement.style;
+  root.setProperty('--cal-fs-day', f + 'px');
+  root.setProperty('--cal-fs-dow', (f * 0.74) + 'px');
+  root.setProperty('--cal-fs-hd', (f * 0.95) + 'px');
+  root.setProperty('--cal-hd-py', Math.max(3, f * 0.28) + 'px');
+  root.setProperty('--cal-pad-y', (f * 0.1) + 'px');
+  root.setProperty('--cal-month-mb', Math.max(4, f * 0.35) + 'px');
+  root.setProperty('--cal-dow-pb', (f * 0.1) + 'px');
+}
+
 function calFitHeight() {
   var box = document.getElementById('cal-box');
   var elMonths = document.getElementById('cal-months');
   var nav = box.querySelector('.cal-nav');
-  var root = document.documentElement.style;
-
-  // 1) 최대 여백으로 리셋한 뒤 실제 필요한 높이를 측정
-  root.setProperty('--cal-pad-y', CAL_PAD_MAX + 'px');
-  root.setProperty('--cal-month-mb', CAL_MB_MAX + 'px');
-  root.setProperty('--cal-dow-pb', CAL_DOWPB_MAX + 'px');
 
   var boxStyle = getComputedStyle(box);
   var padTop = parseFloat(boxStyle.paddingTop) || 0;
   var padBottom = parseFloat(boxStyle.paddingBottom) || 0;
-  var navBox = nav.getBoundingClientRect();
   var navMarginBottom = parseFloat(getComputedStyle(nav).marginBottom) || 0;
+  var available = box.clientHeight - padTop - padBottom - nav.getBoundingClientRect().height - navMarginBottom;
 
-  var available = box.clientHeight - padTop - padBottom - navBox.height - navMarginBottom;
-  var needed = elMonths.scrollHeight;
+  // 가로 제한: 한 칸 너비 안에 두 자리 숫자가 들어가야 함
+  var cellW = (elMonths.clientWidth - 6) / 7;
+  var hi = Math.min(CAL_FS_MAX, cellW * CAL_W_RATIO);
+  var lo = Math.max(CAL_FS_FLOOR, Math.min(hi, CAL_FS_BASE));
+  if (hi <= lo) { calApplySize(lo); return; }
 
-  var ratio = needed > 0 ? available / needed : 1;
-  var scale = Math.max(0, Math.min(1, ratio));
-
-  root.setProperty('--cal-pad-y', (CAL_PAD_MIN + (CAL_PAD_MAX - CAL_PAD_MIN) * scale) + 'px');
-  root.setProperty('--cal-month-mb', (CAL_MB_MIN + (CAL_MB_MAX - CAL_MB_MIN) * scale) + 'px');
-  root.setProperty('--cal-dow-pb', (CAL_DOWPB_MIN + (CAL_DOWPB_MAX - CAL_DOWPB_MIN) * scale) + 'px');
+  function fits(f) { calApplySize(f); return elMonths.scrollHeight <= available + 0.5; }
+  if (!fits(lo)) { calApplySize(lo); return; }   // 기본 크기로도 5개월이 다 안 들어가면 기본 크기 유지(스크롤)
+  if (fits(hi)) return;
+  for (var k = 0; k < 14 && hi - lo > 0.25; k++) {
+    var mid = (lo + hi) / 2;
+    if (fits(mid)) lo = mid; else hi = mid;
+  }
+  calApplySize(lo);
 }
 
 calRender();
