@@ -2658,6 +2658,11 @@ function applyTblAlign(){
                 <div style="font-size:15px;font-weight:700;color:#2d7d2d;">다음내원일</div>
                 <div id="dv-next-visit" style="font-size:22px;font-weight:900;color:#1a6b1a;white-space:nowrap;">—</div>
               </div>
+              <div style="background:#fff1f2;border:2px solid #fca5a5;border-radius:12px;padding:8px 20px;text-align:center;">
+                <div style="font-size:15px;font-weight:700;color:#dc2626;">오늘</div>
+                <div id="dv-today" style="font-size:22px;font-weight:900;color:#dc2626;white-space:nowrap;"></div>
+              </div>
+              <script>(function(){function u(){var d=new Date(),el=document.getElementById('dv-today');if(!el)return;el.textContent=String(d.getFullYear()).slice(2)+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'('+'일월화수목금토'[d.getDay()]+')';}u();setInterval(u,60000);})();</script>
             </div>
             <div style="text-align:right;">
               <div style="font-size:10px;color:#888;margin-bottom:3px;">저장날짜</div>

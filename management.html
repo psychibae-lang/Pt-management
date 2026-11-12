@@ -534,6 +534,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
         <div style="font-size:9px;font-weight:700;color:#2d7d2d;text-transform:uppercase;letter-spacing:0.05em;">다음내원일 ✎</div>
         <div id="pcNextVisit" style="font-size:13px;font-weight:800;color:#1a6b1a;white-space:nowrap;"></div>
       </div>
+      <button type="button" onclick="copyNextVisitDate(this)" title="다음내원일 날짜만 복사 (예: 261212)" style="background:#fff;border:1.5px solid #86e086;border-radius:9px;padding:6px 10px;cursor:pointer;color:#1a6b1a;font-size:12px;font-weight:700;white-space:nowrap;">📋 복사</button>
       <div id="pcDaeriPill" class="hidden" onclick="switchTab('proxy')" title="대리처방 내역 보기" style="cursor:pointer;background:#4338ca;border-radius:9px;padding:6px 12px;text-align:center;min-width:76px;">
         <div style="font-size:9px;font-weight:700;color:#c7d2fe;text-transform:uppercase;letter-spacing:0.05em;">대리</div>
         <div id="pcDaeriDate" style="font-size:13px;font-weight:800;color:#fff;white-space:nowrap;"></div>
@@ -1546,6 +1547,17 @@ function openVisitForm(){
   },100);
 }
 
+
+// 다음내원일 날짜만(YYMMDD) 클립보드 복사 — 챠트 붙여넣기용
+function copyNextVisitDate(btn){
+  var t=(document.getElementById('pcNextVisit').textContent||'');
+  var m=t.match(/\d{6}/);
+  if(!m){ alert('복사할 다음내원일이 없습니다.'); return; }
+  var v=m[0];
+  function done(){ var o=btn.innerHTML; btn.innerHTML='✓ 복사됨'; btn.style.background='#eaffea'; setTimeout(function(){btn.innerHTML=o;btn.style.background='#fff';},1200); }
+  function fallback(){ var ta=document.createElement('textarea'); ta.value=v; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');done();}catch(e){alert('복사 실패: '+v);} document.body.removeChild(ta); }
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(v).then(done,fallback); } else fallback();
+}
 // ── 환자카드 퀵에딧 브릿지 함수 (다음내원일 / 선택의료) ──
 function openNextVisitQuickEdit(){
   var scPanel=document.getElementById('pcSelcareEditPanel');
