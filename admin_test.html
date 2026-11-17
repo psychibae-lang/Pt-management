@@ -2662,6 +2662,11 @@ function applyTblAlign(){
                 <div style="font-size:15px;font-weight:700;color:#dc2626;">오늘</div>
                 <div id="dv-today" style="font-size:22px;font-weight:900;color:#dc2626;white-space:nowrap;"></div>
               </div>
+              <!-- 내원 적정성: 오늘 vs 다음내원일 (3일 이내 초록 / 4일+ 빠름 분홍 / 4일+ 늦음 파랑) -->
+              <div id="dv-adherence" style="display:none;border-radius:12px;padding:8px 20px;text-align:center;align-self:stretch;min-width:120px;flex-direction:column;justify-content:center;border:3px solid #16a34a;background:#bbf7d0;color:#14532d;">
+                <div id="dv-adherence-text" style="font-size:24px;font-weight:900;white-space:nowrap;"></div>
+                <div id="dv-adherence-sub" style="font-size:12px;font-weight:700;opacity:0.8;white-space:nowrap;"></div>
+              </div>
               <script>(function(){function u(){var d=new Date(),el=document.getElementById('dv-today');if(!el)return;el.textContent=String(d.getFullYear()).slice(2)+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'('+'일월화수목금토'[d.getDay()]+')';}u();setInterval(u,60000);})();</script>
             </div>
             <div style="text-align:right;">
@@ -3139,6 +3144,7 @@ function dvShowFlash(chartNo) {
 // 날짜값(YYMMDD 또는 ISO) → "YYMMDD(요일)"
 function dvDate6Label(val) {
   var s = String(val || '').trim();
+  if (/^\d{6}이후$/.test(s)) return dvDate6Label(s.slice(0,6)) + '이후';
   if (!/^\d{6}$/.test(s)) {
     var d = new Date(val);
     if (isNaN(d.getTime())) return s || '—';
@@ -3165,6 +3171,41 @@ async function dvLoadVisitBadges(chartNo) {
   if (cur && cur !== String(chartNo)) return;
   document.getElementById('dv-last-visit').textContent = lastVisitLabel;
   document.getElementById('dv-next-visit').textContent = nextVisitLabel;
+  dvRenderAdherence(chartNo, v);
+}
+
+// ── 내원 적정성 배지: 오늘 날짜를 '오늘 진료 전' 다음내원일과 비교 ──
+// 오늘 진료를 이미 저장했다면(visit_date = 오늘) visits 행의 다음내원일은 새 예약일이므로,
+// 저장 전에 본 다음내원일을 이 브라우저에 기억해 두었다가 그것으로 비교한다.
+function dvToday6() { var d = new Date(); return String(d.getFullYear()).slice(2) + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0'); }
+function dvTo6(val) { var s = String(val || '').trim(); if (/^\d{6}/.test(s)) return s.slice(0,6); var d = new Date(val); if (isNaN(d.getTime())) return ''; return String(d.getFullYear()).slice(2) + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0'); }
+function dvD6ToDate(s) { return new Date(2000 + parseInt(s.slice(0,2)), parseInt(s.slice(2,4)) - 1, parseInt(s.slice(4,6))); }
+function dvRenderAdherence(chartNo, v) {
+  var box = document.getElementById('dv-adherence');
+  if (!box) return;
+  box.style.display = 'none';
+  var today = dvToday6(), key = 'dvPrevNext_' + chartNo, ref = '';
+  var visit6 = v ? dvTo6(v.visit_date) : '';
+  var next = v && v.next_visit_date ? String(v.next_visit_date).trim() : '';
+  if (v && visit6 && visit6 !== today) {
+    ref = next;  // 아직 오늘 진료 저장 전 → 현재 다음내원일이 비교 대상
+    try { localStorage.setItem(key, JSON.stringify({ day: today, next: next })); } catch (e) {}
+  } else if (v && visit6 === today) {
+    try { var c = JSON.parse(localStorage.getItem(key) || 'null'); if (c && c.day === today) ref = c.next; } catch (e) {}
+  }
+  var after = /^\d{6}이후$/.test(ref);
+  var ref6 = dvTo6(ref);
+  if (!/^\d{6}$/.test(ref6)) return;
+  var diff = Math.round((dvD6ToDate(today) - dvD6ToDate(ref6)) / 86400000); // +면 늦음, -면 빠름
+  var txt, sub = '다음내원일 ' + dvDate6Label(ref6) + (after ? '이후' : '') + ' 대비', bg, bd, fg;
+  if (after && diff >= 0) { txt = diff === 0 ? '당일 내원' : diff + '일 지남'; sub = '이후 내원 · ' + sub; bg = '#bbf7d0'; bd = '#16a34a'; fg = '#14532d'; }
+  else if (Math.abs(diff) <= 3) { txt = diff === 0 ? '당일 내원' : (diff > 0 ? diff + '일 지남' : (-diff) + '일 빠름'); bg = '#bbf7d0'; bd = '#16a34a'; fg = '#14532d'; }
+  else if (diff < 0) { txt = (-diff) + '일 빠름'; bg = '#fce7f3'; bd = '#db2777'; fg = '#be123c'; }
+  else { txt = diff + '일 지남'; bg = '#dbeafe'; bd = '#1e3a8a'; fg = '#1e3a8a'; }
+  document.getElementById('dv-adherence-text').textContent = txt;
+  document.getElementById('dv-adherence-sub').textContent = sub;
+  box.style.background = bg; box.style.borderColor = bd; box.style.color = fg;
+  box.style.display = 'flex';
 }
 
 async function dvLoad() {
@@ -3209,6 +3250,7 @@ async function dvLoad() {
     // 최근내원일 / 다음내원일 — 진료 저장 시 약물과 내원일이 동시에 저장되므로 잠시 후 한 번 더 갱신
     document.getElementById('dv-last-visit').textContent = '—';
     document.getElementById('dv-next-visit').textContent = '—';
+    var _adh = document.getElementById('dv-adherence'); if (_adh) _adh.style.display = 'none';
     dvLoadVisitBadges(chartNo);
     setTimeout(function(){ dvLoadVisitBadges(chartNo); }, 1500);
 

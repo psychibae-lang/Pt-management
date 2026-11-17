@@ -560,6 +560,9 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
         <span style="font-size:11px;font-weight:700;color:var(--text2);">숫자 입력 기준</span>
         <button type="button" id="nvBaseToday" onclick="setNextVisitBase('today')" class="btn btn-outline" style="font-size:11px;padding:5px 10px;">오늘(진료일)</button>
         <button type="button" id="nvBaseNext" onclick="setNextVisitBase('next')" class="btn btn-outline" style="font-size:11px;padding:5px 10px;">기존 다음내원일</button>
+        <label title="비정기 내원 환자: 'YYMMDD(요일)이후'로 저장. 문자 발송·다음내원일 집계에서 제외" style="display:inline-flex;align-items:center;gap:5px;margin-left:6px;font-size:11px;font-weight:700;color:#7c2d12;background:#fff7ed;border:1px solid #fdba74;border-radius:7px;padding:5px 9px;cursor:pointer;">
+          <input type="checkbox" id="nvAfterChk" onchange="previewNextVisitQuick()" style="margin:0;width:auto;"> 이후 (문자·집계 제외)
+        </label>
       </div>
       <div id="pcNextVisitHint" style="font-size:11px;color:var(--text2);margin-top:5px;">숫자 입력: 30 → 기준일+30일 · 261212 → 26년 12월 12일 (📅 달력도 가능)</div>
     </div>
@@ -1301,6 +1304,19 @@ function initTabAligns(){
 // ── 날짜 ─────────────────────────────────────────────
 function today6(){var d=new Date();return String(d.getFullYear()).slice(2)+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');}
 function fmt6(val){if(!val)return '';var s=String(val).trim();if(/^\d{6}$/.test(s))return s;var d=new Date(val);if(!isNaN(d.getTime()))return String(d.getFullYear()).slice(2)+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');return s;}
+// 다음내원일 '이후' 표기: DB 에 'YYMMDD이후' 로 저장 → 정확한 날짜 조회(in.)·문자·집계에서 자동 제외
+var NV_AFTER='이후';
+function nvIsAfter(v){return /^\d{6}이후$/.test(String(v||'').trim());}
+function nvDate6(v){var s=String(v||'').trim();return nvIsAfter(s)?s.slice(0,6):fmt6(s);}
+function nvLabel(v){if(!v)return '';var s=String(v).trim();return nvIsAfter(s)?displayDate(s.slice(0,6))+NV_AFTER:displayDate(fmt6(s));}
+function renderPcNextVisit(v){
+  var el=document.getElementById('pcNextVisit');if(!el)return;
+  el.textContent=v?nvLabel(v):'미선택';
+  var after=nvIsAfter(v);
+  el.style.background=after?'#7c2d12':'';el.style.color=after?'#fff':'';
+  el.style.borderRadius=after?'5px':'';el.style.padding=after?'0 5px':'';
+  el.title=after?'이후 표시: 문자 발송·다음내원일 집계 제외':'';
+}
 function displayDate(d6){if(!d6||d6.length!==6)return d6||'없음';var days=['일','월','화','수','목','금','토'];var y=2000+parseInt(d6.slice(0,2)),mo=parseInt(d6.slice(2,4)),d=parseInt(d6.slice(4,6));return d6+'('+days[new Date(y,mo-1,d).getDay()]+')';}
 
 // ── 달력 오버레이 ─────────────────────────────────────
@@ -1474,7 +1490,7 @@ async function searchPatient(autoSaveDrugs){
     toggleChartEdit(false);
     // 최근내원일 / 다음내원일 뱃지
     document.getElementById('pcLastVisit').textContent=visit?displayDate(fmt6(visit.visit_date)):'없음';
-    document.getElementById('pcNextVisit').textContent=(visit&&visit.next_visit_date)?displayDate(fmt6(visit.next_visit_date)):'미선택';
+    renderPcNextVisit(visit&&visit.next_visit_date?String(visit.next_visit_date).trim():'');
     // 대리 뱃지 — 대리처방 신청 내역 있을 때만 표시
     var pcDaeriPill=document.getElementById('pcDaeriPill');
     if(pcDaeriPill){
@@ -1505,7 +1521,7 @@ async function searchPatient(autoSaveDrugs){
 
     document.getElementById('pPhone').value=patient?(patient.phone||''):'';
     document.getElementById('pSmsYn').checked=patient?patient.sms_yn!=='N':true;
-    document.getElementById('pNextVisitDate').value=(visit&&visit.next_visit_date)?fmt6(visit.next_visit_date):'';
+    document.getElementById('pNextVisitDate').value=(visit&&visit.next_visit_date)?(nvIsAfter(visit.next_visit_date)?String(visit.next_visit_date).trim():fmt6(visit.next_visit_date)):'';
     // 선택의료 토글 + 서류날짜 (숨겨진 레거시 요소 — 저장 로직에서 사용)
     setToggleBtn('pSelCare',selVal);
     var selDateWrap=document.getElementById('pSelCareDateWrap');
@@ -1566,9 +1582,14 @@ function openNextVisitQuickEdit(){
   if(!panel) return;
   var hidden=document.getElementById('pNextVisitDate');
   var input=document.getElementById('pcNextVisitInput');
-  if(input) input.value=hidden?hidden.value:'';
-  _nvExisting=(hidden&&/^\d{6}$/.test(hidden.value.trim()))?hidden.value.trim():'';
-  _nvBaseMode='today';
+  var cur=hidden?hidden.value.trim():'';
+  var curD6=nvIsAfter(cur)?cur.slice(0,6):cur;
+  if(input) input.value=curD6;
+  var chk=document.getElementById('nvAfterChk');
+  if(chk) chk.checked=nvIsAfter(cur);
+  _nvExisting=/^\d{6}$/.test(curD6)?curD6:'';
+  // 기본 기준: 기존 다음내원일 (없거나 진료일보다 지난 경우 자동으로 오늘 기준)
+  _nvBaseMode='next';
   _renderNextVisitBaseBtns();
   panel.classList.remove('hidden');
   previewNextVisitQuick();
@@ -1637,9 +1658,11 @@ function previewNextVisitQuick(){
     return;
   }
   hint.style.color='var(--accent)';
+  var afterOn=!!(document.getElementById('nvAfterChk')||{}).checked;
+  var aft=afterOn?NV_AFTER+' (문자·집계 제외)':'';
   hint.textContent=r.days!=null
-    ? '→ '+displayDate(r.val)+' ('+(_nvBaseDate6()===_nvVisitDate6()?'진료일 ':'기존 다음내원일 ')+displayDate(r.base)+' + '+r.days+'일) · 저장을 누르세요'
-    : '→ '+displayDate(r.val)+' · 저장을 누르세요';
+    ? '→ '+displayDate(r.val)+aft+' ('+(_nvBaseDate6()===_nvVisitDate6()?'진료일 ':'기존 다음내원일 ')+displayDate(r.base)+' + '+r.days+'일) · 저장을 누르세요'
+    : '→ '+displayDate(r.val)+aft+' · 저장을 누르세요';
 }
 
 async function saveNextVisitQuick(){
@@ -1648,7 +1671,8 @@ async function saveNextVisitQuick(){
   var r=parseNextVisitInput(input.value);
   if(!r.ok){previewNextVisitQuick();input.focus();return;}
   input.value=r.val;
-  var val=r.val;
+  var chk=document.getElementById('nvAfterChk');
+  var val=(r.val&&chk&&chk.checked)?r.val+NV_AFTER:r.val;
   var hidden=document.getElementById('pNextVisitDate');
   if(hidden) hidden.value=val;
   await saveVisitDate();
@@ -2402,7 +2426,7 @@ async function loadSpecialList(type){
         var tr=document.createElement('tr');
         tr.innerHTML='<td><span class="chart-tag" style="cursor:pointer;" onclick="goToPatient(\''+r.chart_no+'\')">'+r.chart_no+'</span></td>'
           +'<td style="font-size:12px;">'+displayDate(fmt6(r.visit_date))+'</td>'
-          +'<td style="font-size:12px;">'+(r.next_visit_date?displayDate(fmt6(r.next_visit_date)):'-')+'</td>'
+          +'<td style="font-size:12px;">'+(r.next_visit_date?nvLabel(r.next_visit_date):'-')+'</td>'
           +'<td style="font-family:monospace;font-size:12px;">'+(pMap[r.chart_no]||'-')+'</td>'
           +'<td style="font-size:12px;">'+selDateDisp+'</td>';
         tbody.appendChild(tr);
@@ -2616,7 +2640,7 @@ async function loadSmsList(){
     var visitRows;
     if(startD&&endD){
       visitRows=await sbGet('visits',{next_visit_date:'gte.'+startD,select:'chart_no,next_visit_date',order:'next_visit_date.asc,chart_no.asc',limit:'1000'});
-      visitRows=visitRows.filter(function(v){return v.next_visit_date<=endD;});
+      visitRows=visitRows.filter(function(v){return /^\d{6}$/.test(String(v.next_visit_date||''))&&v.next_visit_date<=endD;}); // '이후' 표시 제외
       _smsGroup=_smsGroup||'mon';
     } else {
       var inFilter=_smsDates.join(',');
