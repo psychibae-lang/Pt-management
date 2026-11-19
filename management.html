@@ -534,7 +534,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
         <div style="font-size:9px;font-weight:700;color:#2d7d2d;text-transform:uppercase;letter-spacing:0.05em;">다음내원일 ✎</div>
         <div id="pcNextVisit" style="font-size:13px;font-weight:800;color:#1a6b1a;white-space:nowrap;"></div>
       </div>
-      <button type="button" onclick="copyNextVisitDate(this)" title="다음내원일 날짜만 복사 (예: 261212 / 이후 환자는 261212이후)" style="background:#fff;border:1.5px solid #86e086;border-radius:9px;padding:6px 10px;cursor:pointer;color:#1a6b1a;font-size:12px;font-weight:700;white-space:nowrap;">📋 복사</button>
+      <button type="button" id="pcNextVisitCopyBtn" onclick="copyNextVisitDate(this)" title="다음내원일 복사 (예: 261212(토) / 이후 환자는 261212(토)이후) · 저장하면 자동 복사됨" style="background:#fff;border:1.5px solid #86e086;border-radius:9px;padding:6px 10px;cursor:pointer;color:#1a6b1a;font-size:12px;font-weight:700;white-space:nowrap;">📋 복사</button>
       <div id="pcDaeriPill" class="hidden" onclick="switchTab('proxy')" title="대리처방 내역 보기" style="cursor:pointer;background:#4338ca;border-radius:9px;padding:6px 12px;text-align:center;min-width:76px;">
         <div style="font-size:9px;font-weight:700;color:#c7d2fe;text-transform:uppercase;letter-spacing:0.05em;">대리</div>
         <div id="pcDaeriDate" style="font-size:13px;font-weight:800;color:#fff;white-space:nowrap;"></div>
@@ -1564,17 +1564,30 @@ function openVisitForm(){
 }
 
 
-// 다음내원일 날짜만(YYMMDD) 클립보드 복사 — 챠트 붙여넣기용
-function copyNextVisitDate(btn){
-  var t=(document.getElementById('pcNextVisit').textContent||'');
-  var m=t.match(/\d{6}/);
-  if(!m){ alert('복사할 다음내원일이 없습니다.'); return; }
-  var v=m[0];
-  if(/이후\s*$/.test(t)) v+=NV_AFTER; // '이후' 환자는 261207이후 로 복사 (챠트메모용)
-  function done(){ var o=btn.innerHTML; btn.innerHTML='✓ 복사됨'; btn.style.background='#eaffea'; setTimeout(function(){btn.innerHTML=o;btn.style.background='#fff';},1200); }
-  function fallback(){ var ta=document.createElement('textarea'); ta.value=v; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');done();}catch(e){alert('복사 실패: '+v);} document.body.removeChild(ta); }
+// 다음내원일 클립보드 복사 (요일 포함: 261212(토) / 이후 환자는 261212(토)이후) — 챠트 붙여넣기용
+function _nvClipText(v){
+  var s=String(v||'').trim(); if(!s) return '';
+  var m=s.match(/\d{6}/); if(!m) return '';
+  return displayDate(m[0])+(nvIsAfter(s)?NV_AFTER:'');
+}
+function _nvCopy(v,btn){
+  function done(){
+    if(!btn) btn=document.getElementById('pcNextVisitCopyBtn');
+    if(btn){ var o=btn.dataset.orig||btn.innerHTML; btn.dataset.orig=o; btn.innerHTML='✓ 복사됨'; btn.style.background='#eaffea'; clearTimeout(btn._t); btn._t=setTimeout(function(){btn.innerHTML=o;btn.style.background='#fff';},1500); }
+    if(typeof showToast==='function') showToast('📋 다음내원일 '+v+' 복사됨');
+  }
+  function fallback(){ var ta=document.createElement('textarea'); ta.value=v; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); var ok=false; try{ok=document.execCommand('copy');}catch(e){} document.body.removeChild(ta); if(ok) done(); else if(btn) alert('복사 실패: '+v); }
   if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(v).then(done,fallback); } else fallback();
 }
+function copyNextVisitDate(btn){
+  var hidden=document.getElementById('pNextVisitDate');
+  var v=_nvClipText(hidden&&hidden.value);
+  if(!v) v=_nvClipText(document.getElementById('pcNextVisit').textContent);
+  if(!v){ alert('복사할 다음내원일이 없습니다.'); return; }
+  _nvCopy(v,btn);
+}
+// 저장 직후 자동 복사 (다음내원일이 있을 때만)
+function autoCopyNextVisit(nd){ var v=_nvClipText(nd); if(v) _nvCopy(v,null); }
 // ── 환자카드 퀵에딧 브릿지 함수 (다음내원일 / 선택의료) ──
 function openNextVisitQuickEdit(){
   var scPanel=document.getElementById('pcSelcareEditPanel');
@@ -1845,6 +1858,7 @@ async function saveVisitDate(){
     if(existing&&existing.length>0){await sbUpdate('visits',{chart_no:_currentChart},visitData);}
     else{await sbInsert('visits',visitData);}
     setStatus('visitSaveStatus','success','✓ 내원일 저장됨');
+    autoCopyNextVisit(nd);
     searchPatient();
   }catch(err){setStatus('visitSaveStatus','error','내원일 저장 실패: '+err.message);}
   finally{btn.disabled=false;btn.textContent='저장';}
@@ -1951,6 +1965,7 @@ async function saveVisitAll(){
     await Promise.all(saves);
     _drugsChanged=false;
     setStatus('visitSaveStatus','success','✓ 전체 저장 완료');
+    autoCopyNextVisit(nd);
     searchPatient();
     document.getElementById('visitForm').classList.add('hidden');
     window.scrollTo({top:0,behavior:'smooth'});
