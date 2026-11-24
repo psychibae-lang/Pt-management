@@ -1214,7 +1214,9 @@ function renderRow(sess,res){
     <td style="font-size:12px;white-space:nowrap;color:#888">
       ${ts}<br>
       <button class="btn sm" style="margin-top:3px;font-size:12px;color:#2563eb;border-color:#bfdbfe" 
-        onclick="copySessionAll('${sess.id}')">전체복사</button>
+        onclick="copySessionAll('${sess.id}')">전체복사</button><br>
+      <button class="btn sm" style="margin-top:3px;font-size:12px;color:#059669;border-color:#a7f3d0" 
+        onclick="copySessionChart('${sess.id}')" title="결과해석 없이 한 줄로 복사 (날짜는 처음 한 번만)">챠트복사</button>
     </td>
     <td style="font-weight:700;white-space:nowrap">
       <span onclick="filterByName('${(sess.patient_name||'').replace(/'/g,"\'")}')"
@@ -1984,6 +1986,34 @@ async function copySessionAll(sessId){
   const allText=results.map(r=>r.copy_text).join('\n');
   navigator.clipboard.writeText(allText).then(()=>{
     toast('✅ '+results.length+'개 검사 전체 복사 완료!');
+  });
+}
+
+// 챠트복사: 결과해석 제외, 날짜는 처음 한 번만, 한 줄로
+// 예) 261124/ MDQ/ 3/ 1/ 0/ RFL/ 118/
+async function copySessionChart(sessId){
+  let results=allResults.filter(r=>r.session_id===sessId&&r.copy_text);
+  if(results.length===0){
+    const{data:res}=await sb.from('results').select('*').eq('session_id',sessId);
+    results=fixMoci(res||[]).filter(r=>r.copy_text);
+  }
+  if(results.length===0){toast('복사할 데이터가 없습니다.');return;}
+  const order=['asrs','cape15','phq9','cesd','qids','bdi','ids','cdi','kgds','mdq','hads','acq','appq','pdss','rfl','fne','ocir','moci','docs','mast','pcl5','ies'];
+  results.sort((a,b)=>order.indexOf(a.scale_id)-order.indexOf(b.scale_id));
+  const segs=[];let lastDate=null;
+  results.forEach(r=>{
+    const parts=String(r.copy_text).replace(/\n/g,' ').split('/').map(x=>x.trim());
+    const date=parts.shift();
+    const interps=String(r.interp||'').split('/').map(x=>x.trim()).filter(Boolean);
+    const body=parts.filter(x=>x&&!interps.includes(x));
+    if(!body.length)return;
+    if(date&&date!==lastDate){segs.push(date);lastDate=date;}
+    segs.push(...body);
+  });
+  if(!segs.length){toast('복사할 데이터가 없습니다.');return;}
+  const text=segs.join('/ ')+'/';
+  navigator.clipboard.writeText(text).then(()=>{
+    toast('✅ 챠트복사 완료: '+text);
   });
 }
 
