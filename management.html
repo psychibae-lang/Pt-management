@@ -344,6 +344,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
 #adminPinBar a:hover{border-color:var(--accent);color:var(--accent);background:#eef3fe;}
 #adminPinBar a img{width:14px;height:14px;object-fit:contain;}
 
+#piDrugArea tr.bulk-on>td{background-color:#e3edff !important;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -1219,7 +1220,11 @@ function applyBulkFill(){
   var days=document.getElementById('bulkDays')?document.getElementById('bulkDays').value.trim():'';
   var method=document.getElementById('bulkMethod')?document.getElementById('bulkMethod').value.trim():'';
   if(!dose&&!freq&&!days&&!method){alert('입력할 값을 입력해주세요.');return;}
+  pruneBulkSel();
+  var useSel=_bulkSel.length>0,applied=0;
   _patientDrugs.forEach(function(d,i){
+    if(useSel&&_bulkSel.indexOf(d)===-1)return;
+    applied++;
     if(dose){d.dose=dose;var el=document.querySelector('[data-pidx="'+i+'"][data-pfield="dose"]');if(el)el.value=dose;}
     if(freq){d.daily_freq=freq;var el=document.querySelector('[data-pidx="'+i+'"][data-pfield="daily_freq"]');if(el)el.value=freq;}
     if(days){d.days=days;var el=document.querySelector('[data-pidx="'+i+'"][data-pfield="days"]');if(el)el.value=days;}
@@ -1227,6 +1232,46 @@ function applyBulkFill(){
   });
   _drugsChanged=true;
   ['bulkDose','bulkFreq','bulkDays','bulkMethod'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  if(method){ // 용법설명 칸 갱신
+    document.querySelectorAll('#piDrugArea tr[data-drow]').forEach(function(tr){
+      var d=_patientDrugs[+tr.getAttribute('data-drow')];var td=tr.children[7];
+      if(d&&td)td.innerHTML=getMethodDesc(d.method);
+    });
+  }
+  if(typeof showToast==='function')showToast('✅ '+(useSel?'선택한 '+applied+'개 행':'전체 '+applied+'개 행')+'에 적용');
+}
+// ── 일괄입력: Enter로 적용 / 행 선택 ──
+var _bulkSel=[]; // 선택된 약물 객체 (순서 이동해도 유지)
+function bulkFillKey(e){
+  if(e.key==='Enter'&&!e.isComposing&&e.keyCode!==229){
+    e.preventDefault();
+    applyBulkFill();
+    var el=document.getElementById(e.target.id);if(el)el.focus();
+  }
+}
+function pruneBulkSel(){_bulkSel=_bulkSel.filter(function(d){return _patientDrugs.indexOf(d)!==-1;});}
+function toggleBulkSel(i,on){
+  var d=_patientDrugs[i];if(!d)return;
+  var k=_bulkSel.indexOf(d);
+  if(on&&k===-1)_bulkSel.push(d);
+  if(!on&&k!==-1)_bulkSel.splice(k,1);
+  var tr=document.querySelector('#piDrugArea tr[data-drow="'+i+'"]');if(tr)tr.classList.toggle('bulk-on',!!on);
+  updateBulkSelUI();
+}
+function toggleBulkSelAll(on){
+  _bulkSel=on?_patientDrugs.slice():[];
+  document.querySelectorAll('#piDrugArea input.bulk-sel').forEach(function(cb){
+    cb.checked=on;var tr=cb.closest('tr');if(tr)tr.classList.toggle('bulk-on',!!on);
+  });
+  updateBulkSelUI();
+}
+function clearBulkSel(){toggleBulkSelAll(false);}
+function updateBulkSelUI(){
+  pruneBulkSel();
+  var n=_bulkSel.length,btn=document.getElementById('bulkApplyBtn'),clr=document.getElementById('bulkClearSelBtn'),all=document.getElementById('bulkSelAll');
+  if(btn){btn.textContent=n?'선택 '+n+'개 적용':'전체 적용';btn.style.background=n?'#f97316':'#4f8ef7';}
+  if(clr)clr.style.display=n?'inline-block':'none';
+  if(all){all.checked=n>0&&n===_patientDrugs.length;all.indeterminate=n>0&&n<_patientDrugs.length;}
 }
 function applyConvertBulkFill(){
   var dose=document.getElementById('convertBulkDose')?document.getElementById('convertBulkDose').value.trim():'';
@@ -2023,12 +2068,13 @@ function renderPatientDrugs(){
   var html=''
     +'<div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;background:#f0f4ff;border-radius:7px;padding:7px 10px;flex-wrap:wrap;">'
     +'<span style="font-size:11px;color:#666;font-weight:600;white-space:nowrap;">일괄입력:</span>'
-    +'<input id="bulkDose" type="text" placeholder="용량" style="width:46px;padding:4px 6px;border:1px solid #c7d9fb;border-radius:5px;font-size:12px;text-align:center;">'
-    +'<input id="bulkFreq" type="text" placeholder="일투" style="width:40px;padding:4px 6px;border:1px solid #c7d9fb;border-radius:5px;font-size:12px;text-align:center;">'
-    +'<input id="bulkDays" type="text" placeholder="일수" style="width:40px;padding:4px 6px;border:1px solid #c7d9fb;border-radius:5px;font-size:12px;text-align:center;">'
-    +'<input id="bulkMethod" type="text" placeholder="용법" style="width:46px;padding:4px 6px;border:1px solid #c7d9fb;border-radius:5px;font-size:12px;text-align:center;">'
-    +'<button onclick="applyBulkFill()" style="padding:4px 12px;background:#4f8ef7;color:#fff;border:none;border-radius:5px;font-size:12px;cursor:pointer;font-weight:600;">전체 적용</button>'
-    +'<span style="font-size:10px;color:#999;">입력한 항목만 전체 행에 적용</span>'
+    +'<input id="bulkDose" type="text" placeholder="용량" style="width:46px;padding:4px 6px;border:1px solid #c7d9fb;border-radius:5px;font-size:12px;text-align:center;" onkeydown="bulkFillKey(event)">'
+    +'<input id="bulkFreq" type="text" placeholder="일투" style="width:40px;padding:4px 6px;border:1px solid #c7d9fb;border-radius:5px;font-size:12px;text-align:center;" onkeydown="bulkFillKey(event)">'
+    +'<input id="bulkDays" type="text" placeholder="일수" style="width:40px;padding:4px 6px;border:1px solid #c7d9fb;border-radius:5px;font-size:12px;text-align:center;" onkeydown="bulkFillKey(event)">'
+    +'<input id="bulkMethod" type="text" placeholder="용법" style="width:46px;padding:4px 6px;border:1px solid #c7d9fb;border-radius:5px;font-size:12px;text-align:center;" onkeydown="bulkFillKey(event)">'
+    +'<button id="bulkApplyBtn" onclick="applyBulkFill()" style="padding:4px 12px;background:#4f8ef7;color:#fff;border:none;border-radius:5px;font-size:12px;cursor:pointer;font-weight:600;">전체 적용</button>'
+    +'<span id="bulkHint" style="font-size:10px;color:#999;">입력 후 Enter 또는 버튼 · 왼쪽 체크한 행만 적용 (체크 없으면 전체)</span>'
+    +'<button id="bulkClearSelBtn" onclick="clearBulkSel()" style="display:none;padding:3px 8px;background:#fff;border:1px solid #c7d9fb;border-radius:5px;font-size:11px;cursor:pointer;color:#4f8ef7;">선택 해제</button>'
     +'</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center;">'
     +'<button onclick="addPatientDrug()" class="btn btn-outline" style="font-size:11px;padding:5px 10px;">+ 행 추가</button>'
@@ -2064,8 +2110,12 @@ function renderPatientDrugs(){
     +'<div style="font-size:12px;font-weight:700;color:var(--accent);">'+savedDisp+'</div></div></div>'
     +'<div style="overflow-x:auto;padding:0 0 4px;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr>';
   html+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr>';
-  ['','약물코드','약물명','하루총용량','일투','일수','용법','용법설명',''].forEach(function(h){
+  ['','약물코드','약물명','하루총용량','일투','일수','용법','용법설명',''].forEach(function(h,hi){
     var isTotal = (h==='하루총용량');
+    if(hi===0){
+      html+='<th style="background:#f5f7fa;padding:6px 4px;text-align:left;border-bottom:2px solid #e0e4ef;"><input type="checkbox" id="bulkSelAll" title="전체 선택/해제" onclick="toggleBulkSelAll(this.checked)" style="cursor:pointer;margin:0 2px;vertical-align:middle;"></th>';
+      return;
+    }
     var thStyle = isTotal
       ? 'background:#fff3cd;color:#b45309;font-size:10px;font-weight:700;text-transform:uppercase;padding:6px 8px;text-align:center;border-bottom:2px solid #f6cc52;'
       : 'background:#f5f7fa;color:#666;font-size:10px;font-weight:700;text-transform:uppercase;padding:6px 8px;text-align:left;border-bottom:2px solid #e0e4ef;';
@@ -2076,9 +2126,11 @@ function renderPatientDrugs(){
     html+='<tr><td colspan="8" style="padding:12px;color:#aaa;text-align:center;">약물 정보 없음 — 위 + 버튼으로 추가하세요</td></tr>';
   } else {
     _patientDrugs.forEach(function(d,i){
-      html+='<tr data-drow="'+i+'" ondragstart="drugDragStart(event,'+i+')" ondragover="drugDragOver(event,'+i+')" ondragleave="drugDragLeave(event)" ondrop="drugDrop(event,'+i+')" ondragend="drugDragEnd(event)">';
+      var _sel=_bulkSel.indexOf(d)!==-1;
+      html+='<tr data-drow="'+i+'"'+(_sel?' class="bulk-on"':'')+' ondragstart="drugDragStart(event,'+i+')" ondragover="drugDragOver(event,'+i+')" ondragleave="drugDragLeave(event)" ondrop="drugDrop(event,'+i+')" ondragend="drugDragEnd(event)">';
       // 순서변경: 드래그 손잡이 + 버튼
       html+='<td style="'+ts+';white-space:nowrap;padding:3px 4px;">'
+        +'<input type="checkbox" class="bulk-sel" data-bidx="'+i+'"'+(_sel?' checked':'')+' onclick="toggleBulkSel('+i+',this.checked)" title="일괄입력 적용할 행 선택" style="cursor:pointer;margin:0 3px 0 0;vertical-align:middle;">'
         +'<span onmousedown="this.closest(\'tr\').draggable=true" onmouseup="this.closest(\'tr\').draggable=false" title="드래그해서 순서 이동" style="cursor:grab;color:#9aa5b8;font-size:15px;padding:0 5px 0 2px;user-select:none;vertical-align:middle;">⠿</span>'
         +'<button onclick="moveDrug('+i+',-1)" style="background:none;border:1px solid #ddd;border-radius:4px;color:#888;cursor:pointer;font-size:11px;padding:1px 5px;line-height:1;" title="위로">▲</button>'
         +'<button onclick="moveDrug('+i+',1)" style="background:none;border:1px solid #ddd;border-radius:4px;color:#888;cursor:pointer;font-size:11px;padding:1px 5px;line-height:1;margin-left:2px;" title="아래로">▼</button>'
@@ -2132,6 +2184,7 @@ function renderPatientDrugs(){
     +'</div>';
 
   el.innerHTML=html;
+  updateBulkSelUI();
 }
 
 function onDrugCommentChange(v){_patientDrugComment=v;_drugsChanged=true;}
