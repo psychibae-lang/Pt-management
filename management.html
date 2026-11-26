@@ -550,6 +550,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#fafbff;}
     <!-- 다음내원일 퀵에딧 패널 -->
     <div id="pcNextVisitEditPanel" class="hidden" style="margin-top:10px;background:#eef3fe;border:1px solid #c7d9fb;border-radius:10px;padding:10px 14px;">
       <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:6px;">다음내원일 변경</div>
+      <div id="nvQuickDays" style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:7px;"></div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
         <input type="text" id="pcNextVisitInput" placeholder="30 또는 261212" inputmode="numeric" autocomplete="off" maxlength="6" style="max-width:130px;background:#fff;" oninput="previewNextVisitQuick()" onkeydown="if(event.key==='Enter'){event.preventDefault();saveNextVisitQuick();}">
         <button onclick="openCal('pcNextVisitInput')" class="btn btn-outline" style="padding:7px 10px;">📅</button>
@@ -1706,6 +1707,7 @@ function parseNextVisitInput(raw){
 function previewNextVisitQuick(){
   var hint=document.getElementById('pcNextVisitHint');
   var input=document.getElementById('pcNextVisitInput');
+  renderNvQuickDays();
   if(!hint||!input)return;
   var r=parseNextVisitInput(input.value);
   var def='숫자 입력: 30 → 기준일+30일 · 261212 → 26년 12월 12일 (📅 달력도 가능)';
@@ -1722,6 +1724,35 @@ function previewNextVisitQuick(){
   hint.textContent=r.days!=null
     ? '→ '+displayDate(r.val)+aft+' ('+(_nvBaseDate6()===_nvVisitDate6()?'진료일 ':'기존 다음내원일 ')+displayDate(r.base)+' + '+r.days+'일) · 저장을 누르세요'
     : '→ '+displayDate(r.val)+aft+' · 저장을 누르세요';
+}
+
+// 자주 쓰는 일수 버튼: 클릭 = 현재 '숫자 입력 기준'으로 계산해 바로 저장
+var NV_QUICK_DAYS=[30,28,21,18,15,14,10,7];
+function renderNvQuickDays(){
+  var box=document.getElementById('nvQuickDays');if(!box)return;
+  var b=_nvBaseDate6();
+  if(!box.firstChild){
+    NV_QUICK_DAYS.forEach(function(n){
+      var btn=document.createElement('button');
+      btn.type='button';btn.className='nv-qd';btn.setAttribute('data-days',n);
+      btn.style.cssText='display:inline-flex;flex-direction:column;align-items:center;line-height:1.1;min-width:50px;padding:4px 8px;border-radius:8px;border:1.5px solid #f3a5a5;background:#fde2e2;color:#7f1d1d;cursor:pointer;font-family:inherit;';
+      btn.innerHTML='<span style="font-size:16px;font-weight:800;">'+n+'</span><span class="nv-qd-date" style="font-size:10px;font-weight:600;opacity:.8;"></span>';
+      btn.onclick=function(){quickSaveNextVisitDays(n);};
+      box.appendChild(btn);
+    });
+  }
+  Array.prototype.forEach.call(box.querySelectorAll('.nv-qd'),function(btn){
+    var r=parseNextVisitInput(btn.getAttribute('data-days'));
+    btn.querySelector('.nv-qd-date').textContent=r.ok?displayDate(r.val):'';
+    btn.title=(_nvBaseDate6()===_nvVisitDate6()?'진료일 ':'기존 다음내원일 ')+displayDate(b)+' + '+btn.getAttribute('data-days')+'일 → 클릭하면 바로 저장';
+  });
+}
+async function quickSaveNextVisitDays(n){
+  var input=document.getElementById('pcNextVisitInput');
+  if(!input)return;
+  input.value=String(n);
+  previewNextVisitQuick();
+  await saveNextVisitQuick();
 }
 
 async function saveNextVisitQuick(){
