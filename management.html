@@ -1650,6 +1650,7 @@ function openNextVisitQuickEdit(){
   _nvExisting=/^\d{6}$/.test(curD6)?curD6:'';
   // 기본 기준: 기존 다음내원일 (없거나 진료일보다 지난 경우 자동으로 오늘 기준)
   _nvBaseMode='next';
+  _nvQdEdit=false;
   _renderNextVisitBaseBtns();
   panel.classList.remove('hidden');
   previewNextVisitQuick();
@@ -1727,25 +1728,61 @@ function previewNextVisitQuick(){
 }
 
 // 자주 쓰는 일수 버튼: 클릭 = 현재 '숫자 입력 기준'으로 계산해 바로 저장
+// 고정 8개 + 사용자 지정 6칸(이 PC 브라우저에 저장, ✎ 편집으로 입력/삭제)
 var NV_QUICK_DAYS=[30,28,21,18,15,14,10,7];
+var NV_CUSTOM_N=6,NV_CUSTOM_KEY='nvQuickCustomDays',_nvQdEdit=false;
+function _nvCustomDays(){
+  var a=[];try{a=JSON.parse(localStorage.getItem(NV_CUSTOM_KEY)||'[]')||[];}catch(e){a=[];}
+  var out=[];for(var k=0;k<NV_CUSTOM_N;k++){var v=parseInt(a[k],10);out.push(v>=1&&v<=999?v:null);}
+  return out;
+}
+function _nvSetCustomDay(k,raw){
+  var a=_nvCustomDays();var v=parseInt(String(raw).replace(/\D/g,''),10);
+  a[k]=(v>=1&&v<=999)?v:null;
+  try{localStorage.setItem(NV_CUSTOM_KEY,JSON.stringify(a));}catch(e){}
+}
+function toggleNvQuickEdit(focusIdx){
+  _nvQdEdit=!_nvQdEdit;renderNvQuickDays();
+  if(_nvQdEdit){var ins=document.querySelectorAll('#nvQuickDays .nv-qd-in');var t=ins[focusIdx!=null?focusIdx:0];if(t){t.focus();t.select();}}
+}
 function renderNvQuickDays(){
   var box=document.getElementById('nvQuickDays');if(!box)return;
-  var b=_nvBaseDate6();
-  if(!box.firstChild){
-    NV_QUICK_DAYS.forEach(function(n){
-      var btn=document.createElement('button');
-      btn.type='button';btn.className='nv-qd';btn.setAttribute('data-days',n);
-      btn.style.cssText='display:inline-flex;flex-direction:column;align-items:center;line-height:1.1;min-width:50px;padding:4px 8px;border-radius:8px;border:1.5px solid #f3a5a5;background:#fde2e2;color:#7f1d1d;cursor:pointer;font-family:inherit;';
-      btn.innerHTML='<span style="font-size:16px;font-weight:800;">'+n+'</span><span class="nv-qd-date" style="font-size:10px;font-weight:600;opacity:.8;"></span>';
-      btn.onclick=function(){quickSaveNextVisitDays(n);};
-      box.appendChild(btn);
-    });
+  if(_nvQdEdit&&box.contains(document.activeElement)&&document.activeElement.classList.contains('nv-qd-in'))return;
+  var b=_nvBaseDate6(),baseLbl=(b===_nvVisitDate6()?'진료일 ':'기존 다음내원일 ')+displayDate(b);
+  var BS='display:inline-flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;min-width:50px;min-height:38px;padding:4px 8px;border-radius:8px;cursor:pointer;font-family:inherit;';
+  var FIX=BS+'border:1.5px solid #f3a5a5;background:#fde2e2;color:#7f1d1d;';
+  var CUS=BS+'border:1.5px solid #f3c58a;background:#fff1dc;color:#7c3a06;';
+  var EMP=BS+'border:1.5px dashed #c7d0dc;background:#fff;color:#94a3b8;';
+  box.innerHTML='';
+  function dayBtn(n,style){
+    var btn=document.createElement('button');btn.type='button';btn.className='nv-qd';btn.style.cssText=style;
+    var r=parseNextVisitInput(String(n));
+    btn.innerHTML='<span style="font-size:16px;font-weight:800;">'+n+'</span><span style="font-size:10px;font-weight:600;opacity:.8;">'+(r.ok?displayDate(r.val):'')+'</span>';
+    btn.title=baseLbl+' + '+n+'일 → 클릭하면 바로 저장';
+    btn.onclick=function(){quickSaveNextVisitDays(n);};
+    box.appendChild(btn);
   }
-  Array.prototype.forEach.call(box.querySelectorAll('.nv-qd'),function(btn){
-    var r=parseNextVisitInput(btn.getAttribute('data-days'));
-    btn.querySelector('.nv-qd-date').textContent=r.ok?displayDate(r.val):'';
-    btn.title=(_nvBaseDate6()===_nvVisitDate6()?'진료일 ':'기존 다음내원일 ')+displayDate(b)+' + '+btn.getAttribute('data-days')+'일 → 클릭하면 바로 저장';
+  NV_QUICK_DAYS.forEach(function(n){dayBtn(n,FIX);});
+  _nvCustomDays().forEach(function(n,k){
+    if(_nvQdEdit){
+      var inp=document.createElement('input');inp.type='text';inp.className='nv-qd-in';inp.inputMode='numeric';inp.maxLength=3;
+      inp.placeholder='일수';inp.value=n||'';inp.title='일수(1~999) 입력 · 비우면 빈 칸';
+      inp.style.cssText='width:54px;min-height:38px;text-align:center;font-size:15px;font-weight:800;padding:4px;border-radius:8px;border:1.5px solid #f3c58a;background:#fff;color:#7c3a06;';
+      inp.oninput=function(){inp.value=inp.value.replace(/\D/g,'').slice(0,3);_nvSetCustomDay(k,inp.value);};
+      inp.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();var ins=box.querySelectorAll('.nv-qd-in');if(k<ins.length-1){ins[k+1].focus();ins[k+1].select();}else toggleNvQuickEdit();}};
+      box.appendChild(inp);
+    }else if(n){dayBtn(n,CUS);}
+    else{
+      var e=document.createElement('button');e.type='button';e.style.cssText=EMP;e.title='빈 칸: 클릭해서 자주 쓰는 일수 추가';
+      e.innerHTML='<span style="font-size:16px;font-weight:700;">+</span>';
+      e.onclick=function(){toggleNvQuickEdit(k);};box.appendChild(e);
+    }
   });
+  var ed=document.createElement('button');ed.type='button';
+  ed.style.cssText=BS+'min-width:44px;font-size:11px;font-weight:700;border:1.5px solid '+(_nvQdEdit?'var(--accent)':'#c7d9fb')+';background:'+(_nvQdEdit?'var(--accent)':'#fff')+';color:'+(_nvQdEdit?'#fff':'var(--accent)')+';';
+  ed.textContent=_nvQdEdit?'완료':'✎ 편집';ed.title='주황색 6칸의 일수 편집 (이 컴퓨터에 저장)';
+  ed.onclick=function(){toggleNvQuickEdit();};
+  box.appendChild(ed);
 }
 async function quickSaveNextVisitDays(n){
   var input=document.getElementById('pcNextVisitInput');
